@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataPlus — Model Dashboard (Real-Time)</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#060609;--sf:#0e0e14;--sf2:#15151e;--sf3:#1c1c28;--bd:#252535;--tx:#e4e4f0;--tx2:#8888a8;--tx3:#555578;--ac:#8b5cf6;--ac2:#a78bfa;--acd:rgba(139,92,246,.10);--gn:#10b981;--gnd:rgba(16,185,129,.12);--am:#f59e0b;--rs:#f43f5e;--rsd:rgba(244,63,94,.10);--cy:#06b6d4;--pk:#ec4899;--or:#f97316}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:100px}
+.ctr{max-width:1540px;margin:0 auto;padding:14px 20px;position:relative;z-index:1}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 0 20px;border-bottom:1px solid var(--bd);margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:22px;font-weight:800;letter-spacing:-.5px}.hdr h1 span{color:var(--ac)}
+.hdr .sub{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.badge{background:var(--acd);border:1px solid rgba(139,92,246,.25);color:var(--ac2);padding:3px 10px;border-radius:18px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gn);margin-left:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* User picker */
+.user-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;flex-wrap:wrap}
+.user-bar label{font-size:12px;font-weight:600;color:var(--tx2)}
+.user-bar select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer}
+.user-bar .sync-status{font-size:10px;font-family:'JetBrains Mono',monospace;margin-right:auto;display:flex;align-items:center;gap:4px}
+
+.tabs{display:flex;gap:2px;background:var(--sf);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content;flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;color:var(--tx2);transition:all .2s;border:none;background:none;font-family:inherit}
+.tab:hover{color:var(--tx)}.tab.active{background:var(--ac);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.btn{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.btn-ac{background:var(--ac);color:#fff}.btn-ac:hover{background:var(--ac2)}
+.btn-ghost{background:var(--sf3);color:var(--tx2);border:1px solid var(--bd)}.btn-ghost:hover{color:var(--tx);border-color:var(--tx3)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--ac);box-shadow:0 4px 20px rgba(139,92,246,.05)}
+.card.selected{border-color:var(--ac);background:var(--sf2)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;cursor:pointer}
+.card-name{font-size:17px;font-weight:700}.card-id{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.sz{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.trait-badge{display:inline-block;margin:3px 0 6px;padding:2px 9px;border-radius:14px;font-size:9px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar{height:3px;border-radius:2px;background:var(--sf3);margin:3px 0 6px;overflow:hidden}
+.cbar-f{height:100%;border-radius:2px;transition:width .5s}
+.clbl{font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.attrs{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.attr{background:var(--sf3);padding:2px 6px;border-radius:3px;font-size:9px;color:var(--tx2)}
+.meas{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:8px}
+.meas div{text-align:center}.mv{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}.ml{font-size:7px;color:var(--tx3);margin-top:1px}
+
+.card-assign{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.card-assign select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:4px 6px;border-radius:5px;font-size:10px;font-family:'Outfit',sans-serif;cursor:pointer}
+.card-assign label{font-size:9px;color:var(--tx3)}
+.chk-group{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--tx2)}
+.chk-group input[type=checkbox]{accent-color:var(--ac);width:13px;height:13px;cursor:pointer}
+.chk-group.done{color:var(--gn);font-weight:600}
+
+.img-area{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.img-slot{aspect-ratio:3/4;border:1px dashed var(--bd);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--tx3);cursor:pointer;overflow:hidden;position:relative;transition:border-color .2s;background:var(--sf2)}
+.img-slot:hover{border-color:var(--ac)}
+.img-slot img{width:100%;height:100%;object-fit:cover;border-radius:5px}
+.img-slot .slot-label{text-align:center;line-height:1.3;pointer-events:none}
+.img-slot input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.img-slot.has-img{border-style:solid;border-color:var(--gn)}
+.img-slot .remove-img{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:none;align-items:center;justify-content:center}
+.img-slot:hover .remove-img{display:flex}
+.img-slot .uploading{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;border-radius:5px}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+.fg{display:flex;flex-direction:column;gap:2px}
+.fg label{font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.fg select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;min-width:95px;font-family:'Outfit',sans-serif}
+
+/* Compare */
+.chdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.ccnt{font-size:10px;color:var(--tx2);font-family:'JetBrains Mono',monospace}
+.cv{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.cc h3{font-size:16px;margin-bottom:2px}
+.cc .cn{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);margin-bottom:10px}
+.dr{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd)}.dr:last-child{border-bottom:none}
+.dl{font-size:10px;color:var(--tx2);width:70px;flex-shrink:0}
+.dv{font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 6px;border-radius:4px}
+.ds{background:var(--gnd);color:var(--gn)}.dd{background:var(--rsd);color:var(--rs)}
+.dbw{flex:1;margin:0 8px;height:4px;background:var(--sf3);border-radius:2px;overflow:hidden;position:relative}
+.dba,.dbb{position:absolute;top:0;height:100%;border-radius:2px}
+.sil-wrap{display:flex;justify-content:center;gap:36px;margin:20px 0;align-items:flex-end}
+.sil{text-align:center}.sil-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx2);margin-top:3px}
+
+/* Prompts */
+.psec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:10px}
+.psec h3{font-size:13px;margin-bottom:2px;color:var(--ac2)}
+.psec .psub{font-size:10px;color:var(--tx3);margin-bottom:8px}
+.pbox{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;color:var(--tx);position:relative;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word;margin-bottom:6px}
+.cpb{position:absolute;top:5px;right:5px;background:var(--sf3);border:1px solid var(--bd);color:var(--tx2);padding:3px 8px;border-radius:4px;font-size:8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .15s;z-index:2}
+.cpb:hover{background:var(--ac);color:#fff;border-color:var(--ac)}
+.pose-tabs{display:flex;gap:2px;margin-bottom:8px;flex-wrap:wrap}
+.pose-tab{padding:4px 10px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--sf2);color:var(--tx2);font-family:'JetBrains Mono',monospace;transition:all .15s}
+.pose-tab:hover{color:var(--tx)}.pose-tab.active{background:var(--ac);color:#fff;border-color:var(--ac)}
+
+/* Charts */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.cb{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px}
+.cb h4{font-size:11px;color:var(--tx2);margin-bottom:10px}
+.ss{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sc{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center}
+.scv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ac2)}
+.scl{font-size:8px;color:var(--tx3);margin-top:2px}
+
+/* QC */
+.qc-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--bd);margin-bottom:16px}
+.qc-wrap table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:center}
+.qc-wrap th{background:var(--sf2);padding:7px 8px;font-weight:600;color:var(--tx2);font-size:8px;text-transform:uppercase;letter-spacing:.5px;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--ac)}
+.qc-wrap td{padding:6px 8px;border-top:1px solid var(--bd);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px}
+.qc-wrap tr:hover td{background:var(--sf)}
+.qc-pass{color:var(--gn);font-weight:600}.qc-fail{color:var(--rs);font-weight:600}
+.qc-name{font-family:'Outfit',sans-serif;font-weight:600;text-align:left;padding-left:12px}
+.size-ref{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+.size-ref h4{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--ac2)}
+.sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.sr-card{background:var(--sf2);border:1px solid var(--bd);border-radius:7px;padding:8px;text-align:center}
+.sr-sz{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-bottom:3px}
+.sr-range{font-size:9px;color:var(--tx2);line-height:1.5}
+
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--bd)}
+.tw table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:left}
+.tw th{background:var(--sf2);padding:7px 8px;font-weight:600;color:var(--tx2);font-size:8px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap}
+.tw td{padding:6px 8px;border-top:1px solid var(--bd);white-space:nowrap}
+.tw tr:hover td{background:var(--sf)}
+
+.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px;margin-top:14px}
+.tc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start}
+.ta{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;color:#fff}
+.ti h4{font-size:13px;font-weight:700;margin-bottom:1px}
+.ti .tid{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx3);margin-bottom:3px}
+.ti .td{font-size:10px;color:var(--tx2);line-height:1.4}
+.ti .tt{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.ti .ttg{font-size:8px;padding:2px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace}
+
+.progress-bar{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pb-track{flex:1;min-width:180px;height:8px;background:var(--sf3);border-radius:4px;overflow:hidden}
+.pb-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),var(--gn));transition:width .4s}
+.pb-label{font-size:12px;font-weight:600;color:var(--tx2);white-space:nowrap}
+.pb-stat{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx3)}
+
+/* Feedback badges on image slots */
+.fb-bar{display:flex;gap:2px;margin-top:3px;justify-content:center}
+.fb-btn{padding:1px 5px;border-radius:3px;font-size:8px;cursor:pointer;border:1px solid var(--bd);background:var(--sf3);color:var(--tx3);font-family:'JetBrains Mono',monospace;transition:all .15s}
+.fb-btn:hover{border-color:var(--tx2);color:var(--tx)}
+.fb-btn.fb-approved{background:var(--gnd);color:var(--gn);border-color:rgba(16,185,129,.3)}
+.fb-btn.fb-rejected{background:var(--rsd);color:var(--rs);border-color:rgba(244,63,94,.3)}
+.fb-badge{position:absolute;bottom:2px;left:2px;padding:1px 5px;border-radius:3px;font-size:7px;font-weight:700;font-family:'JetBrains Mono',monospace;z-index:2}
+.fb-badge.approved{background:var(--gn);color:#fff}
+.fb-badge.rejected{background:var(--rs);color:#fff}
+.fb-note{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.7);color:var(--am);padding:1px 4px;border-radius:3px;font-size:7px;z-index:2;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+
+/* Feedback modal */
+.fb-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center}
+.fb-modal{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;width:380px;max-width:90vw}
+.fb-modal h4{font-size:15px;margin-bottom:12px;color:var(--ac2)}
+.fb-modal .fb-m-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;margin-bottom:12px;background:var(--sf3)}
+.fb-modal .fb-m-btns{display:flex;gap:8px;margin-bottom:12px}
+.fb-modal .fb-m-btn{flex:1;padding:10px;border-radius:8px;border:2px solid var(--bd);background:var(--sf2);color:var(--tx2);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit}
+.fb-modal .fb-m-btn:hover{border-color:var(--tx3)}
+.fb-modal .fb-m-btn.sel-approved{border-color:var(--gn);background:var(--gnd);color:var(--gn)}
+.fb-modal .fb-m-btn.sel-rejected{border-color:var(--rs);background:var(--rsd);color:var(--rs)}
+.fb-modal textarea{width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:8px;border-radius:6px;font-family:'Outfit',sans-serif;font-size:12px;resize:vertical;min-height:60px;margin-bottom:12px}
+.fb-modal textarea:focus{outline:none;border-color:var(--ac)}
+.fb-modal .fb-m-actions{display:flex;gap:8px;justify-content:flex-end}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ac);color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Connection error banner */
+.conn-banner{background:var(--rsd);border:1px solid var(--rs);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;gap:10px;color:var(--rs);font-size:12px;font-weight:600}
+.conn-banner.show{display:flex}
+.conn-banner .retry-btn{background:var(--rs);color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+
+@media(max-width:900px){.cv,.cg{grid-template-columns:1fr}.ss{grid-template-columns:repeat(3,1fr)}.tg{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+@media(max-width:600px){.ss{grid-template-columns:repeat(2,1fr)}}
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card,.tc{animation:fu .3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="ctr">
+  <div class="hdr">
+    <div><h1><span>DataPlus</span> Model Dashboard<span class="live-dot"></span></h1><div class="sub">Real-Time · 34 Models × 6 Poses · Supabase Sync</div></div>
+    <div class="badge">LIVE SYNC</div>
+  </div>
+
+  <div class="conn-banner" id="connBanner">⚠️ לא מחובר ל-Supabase — הדשבורד עובד במצב מקומי. הכניסי URL ו-Key בקוד.<button class="retry-btn" onclick="location.reload()">רענון</button></div>
+
+  <div class="user-bar">
+    <label>👤 את/ה:</label>
+    <select id="currentUser" onchange="setUser(this.value)">
+      <option value="">בחר/י שם</option>
+      <option value="שלומית">שלומית</option>
+      <option value="שקד">שקד</option>
+    </select>
+    <div class="sync-status" id="syncStatus"><span class="live-dot"></span> מחובר</div>
+  </div>
+
+  <div class="progress-bar" id="progressBar"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="gallery">גלריה & ניהול</button>
+    <button class="tab" data-tab="overview">סקירה</button>
+    <button class="tab" data-tab="profiles">פרופילים</button>
+    <button class="tab" data-tab="compare">השוואה</button>
+    <button class="tab" data-tab="prompts">פרומפטים</button>
+    <button class="tab" data-tab="qc">QC מידות</button>
+    <button class="tab" data-tab="table">טבלה</button>
+  </div>
+
+  <div id="p-gallery" class="panel active"><div class="filters" id="filters"></div><div class="grid" id="galleryGrid"></div></div>
+  <div id="p-overview" class="panel"><div class="ss" id="statsStrip"></div><div id="liveGallery" style="margin-bottom:18px"></div><div class="cg"><div class="cb"><h4>Size Distribution</h4><canvas id="c1"></canvas></div><div class="cb"><h4>Ethnicity</h4><canvas id="c2"></canvas></div><div class="cb"><h4>Body Type × Size</h4><canvas id="c3"></canvas></div><div class="cb"><h4>Height vs Bust</h4><canvas id="c4"></canvas></div></div><div class="cg"><div class="cb"><h4>Skin Tone</h4><canvas id="c5"></canvas></div><div class="cb"><h4>Top 15 Usage</h4><canvas id="c6"></canvas></div></div></div>
+  <div id="p-profiles" class="panel"><h3 style="font-size:15px;margin-bottom:4px">מה מייחד כל מודל?</h3><p style="color:var(--tx2);font-size:11px;margin-bottom:14px">שם, סממנים, הבדלים</p><div class="tg" id="traitsGrid"></div></div>
+  <div id="p-compare" class="panel"><div class="chdr"><span style="font-size:12px;color:var(--tx2)">בחרי 2 מגלריה ←</span><span class="ccnt" id="ccnt">0/2</span><button class="btn btn-ac" id="cbtn" disabled onclick="runCompare()">השווי</button><button class="btn btn-ghost" onclick="clearSel()">נקי</button></div><div id="cmpR"></div></div>
+  <div id="p-prompts" class="panel"><p style="color:var(--tx2);margin-bottom:10px;font-size:11px">פרומפטים מלאים — 5 פוזות + Close-Up. כפתור העתקה על כל פרומפט.</p><div class="filters" style="margin-bottom:10px"><div class="fg"><label>אחראי/ת</label><select id="pmsAssign" onchange="genPrompts()"><option value="">הכל</option><option value="שלומית">שלומית</option><option value="שקד">שקד</option></select></div><div class="fg"><label>מודל</label><select id="pms" onchange="genPrompts()"><option value="all">כל המודלים</option></select></div><div class="fg"><label>סטטוס</label><select id="pmsStatus" onchange="genPrompts()"><option value="">הכל</option><option value="done">הושלם</option><option value="partial">הושלם חלקית</option><option value="none">לא התחיל</option></select></div></div><div id="pCon"></div></div>
+  <div id="p-qc" class="panel"><h3 style="font-size:15px;margin-bottom:4px">QC Measurement Reference</h3><p style="color:var(--tx2);font-size:11px;margin-bottom:14px">טבלת מידות, איורים טכניים, והבדלים בין מידות</p><div id="techIllustrations"></div><div id="sizeRef"></div><div id="sizeCompareChart" class="cb" style="margin-bottom:16px;padding:18px"><h4 style="margin-bottom:12px">Size Comparison — Average Measurements</h4><canvas id="cSizeCompare"></canvas></div><div class="qc-wrap"><table id="qcTable"></table></div></div>
+  <div id="p-table" class="panel"><div class="tw"><table id="dataTable"></table></div></div>
+</div>
+<div id="fbModal"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  🔧 SUPABASE CONFIG — FILL IN YOUR CREDENTIALS  ║
+// ╚══════════════════════════════════════════════════╝
+const SUPABASE_URL = 'https://jxgfkvjtlxpgivzldlnd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Z2Zrdmp0bHhwZ2l2emxkbG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTU0NTAsImV4cCI6MjA4OTIzMTQ1MH0.wI-54hQMnKRqPyu3Q2O0uwF2h-FIKgRT49NCgHP8O3k';
+const STORAGE_BUCKET = 'model-images';
+
+// ── SUPABASE CLIENT ──
+let sb = null;
+let isConnected = false;
+try {
+  if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('YOUR_')) {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    isConnected = true;
+  }
+} catch(e) { console.warn('Supabase init failed:', e); }
+
+if (!isConnected) document.getElementById('connBanner').classList.add('show');
+
+// ── LOCAL FALLBACK STATE ──
+let dbStatus = {};   // model_id → {assigned_to, pose_front, pose_45l, ...}
+let dbImages = {};   // "model_id_pose" → image_url
+let currentUser = localStorage.getItem('dpUser') || '';
+document.getElementById('currentUser').value = currentUser;
+
+function setUser(v) { currentUser = v; localStorage.setItem('dpUser', v); }
+
+// ── MODEL DATA ──
+const MD=[
+{id:682,nm:"Alessandra",cnt:431,sz:"XS",bd:"regular",sk:"olive",hr:"brunette",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:176,bu:78.74,wa:60.96,hp:88.9,ins:30,tr:"Tallest XS — runway-proportioned, narrowest bust",tg:["tallest XS","narrowest bust"],cl:"#8b5cf6"},
+{id:678,nm:"Zara",cnt:5382,sz:"S",bd:"regular",sk:"olive",hr:"black",eth:"Mixed",st:"tall",ag:"regular",ey:"Brown",h:175,bu:74.93,wa:60.96,hp:87.63,ins:30,tr:"Only Mixed-ethnicity; smallest bust (74.9)",tg:["only Mixed","smallest bust"],cl:"#06b6d4"},
+{id:677,nm:"Mei",cnt:1433,sz:"XS",bd:"regular",sk:"fair",hr:"blonde",eth:"asian",st:"tall",ag:"regular",ey:"Green",h:175,bu:81.28,wa:60.96,hp:88.9,ins:29.5,tr:"Only Asian; green eyes; blonde+Asian",tg:["only Asian","green eyes"],cl:"#10b981"},
+{id:614,nm:"Claire",cnt:10687,sz:"XS",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:162,bu:86.36,wa:66.04,hp:73.66,ins:68.58,tr:"Narrowest hips (73.7) — column silhouette",tg:["narrowest hips"],cl:"#f59e0b"},
+{id:665,nm:"Hazel",cnt:1768,sz:"XS",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"junior",ey:"Hazel",h:170,bu:86.36,wa:66.04,hp:99.06,ins:28,tr:"Only junior; hazel eyes; pear XS",tg:["only junior","hazel eyes"],cl:"#f97316"},
+{id:590,nm:"Amara",cnt:10591,sz:"S",bd:"regular",sk:"dark brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:158,bu:80.01,wa:60.96,hp:88.9,ins:67.31,tr:"Shortest regular (158); dark-brown S",tg:["shortest regular"],cl:"#ec4899"},
+{id:631,nm:"Elsa",cnt:9776,sz:"S",bd:"regular",sk:"very fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:167,bu:83.82,wa:67.31,hp:91.44,ins:null,tr:"Nordic look; no inseam data",tg:["very fair","Nordic"],cl:"#06b6d4"},
+{id:620,nm:"Natalie",cnt:12453,sz:"M",bd:"regular",sk:"fair",hr:"dark brown",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:180,bu:83.82,wa:68.58,hp:100.33,ins:71.12,tr:"Tallest regular (180); long inseam M",tg:["tallest regular M"],cl:"#8b5cf6"},
+{id:596,nm:"Isabella",cnt:44582,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:165,bu:88.9,wa:73.66,hp:99.06,ins:67.94,tr:"High-usage Latino M; hourglass",tg:["high usage","hourglass"],cl:"#10b981"},
+{id:616,nm:"Sofia",cnt:12770,sz:"S",bd:"regular",sk:"olive",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:88.9,wa:63.5,hp:91.44,ins:66.04,tr:"Smallest waist-to-bust S",tg:["tiny waist"],cl:"#f59e0b"},
+{id:621,nm:"Valentina",cnt:115626,sz:"M",bd:"regular",sk:"olive",hr:"dark brown",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:163,bu:93.98,wa:76.2,hp:99.06,ins:66.04,tr:"#2 usage (115K); go-to M",tg:["#2 usage"],cl:"#f43f5e"},
+{id:593,nm:"Keisha",cnt:41629,sz:"L",bd:"regular",sk:"light brown",hr:"black",eth:"black",st:"tall",ag:"regular",ey:"Brown",h:171,bu:86.36,wa:83.82,hp:118.11,ins:67.94,tr:"Widest hips regular L",tg:["widest hips L"],cl:"#06b6d4"},
+{id:595,nm:"Lucia",cnt:42912,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:167,bu:91.44,wa:76.2,hp:99.06,ins:64.14,tr:"Sister to Isabella",tg:["similar Isabella"],cl:"#ec4899"},
+{id:605,nm:"Savannah",cnt:26132,sz:"S",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:92.71,wa:76.2,hp:97.79,ins:66.04,tr:"Largest bust S (92.7)",tg:["biggest bust S"],cl:"#8b5cf6"},
+{id:613,nm:"Rachel",cnt:27260,sz:"M",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:167,bu:91.44,wa:81.28,hp:95.25,ins:67.94,tr:"Blue-eyed brunette M",tg:["blue brunette"],cl:"#10b981"},
+{id:594,nm:"Nia",cnt:10953,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:168,bu:90.17,wa:78.74,hp:104.14,ins:67.31,tr:"Olive+Black rare; widest hips reg M",tg:["olive+black"],cl:"#f97316"},
+{id:624,nm:"Destiny",cnt:57843,sz:"L",bd:"regular",sk:"light brown",hr:"light brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:91.44,wa:76.2,hp:109.22,ins:69.22,tr:"Only lt-brown hair; shortest L; 57K",tg:["only lt brown hair"],cl:"#f59e0b"},
+{id:598,nm:"Kristin",cnt:8726,sz:"XL",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Blue",h:173,bu:96.52,wa:77.47,hp:114.3,ins:63.5,tr:"Only regular XL blonde",tg:["blonde XL"],cl:"#06b6d4"},
+{id:609,nm:"Carmen",cnt:7067,sz:"L",bd:"regular",sk:"fair",hr:"brunette",eth:"latino",st:"tall",ag:"regular",ey:"Brown",h:180,bu:104.14,wa:88.9,hp:129.54,ins:77.47,tr:"Longest inseam (77.5); tallest L",tg:["longest inseam"],cl:"#f43f5e"},
+{id:604,nm:"Brittany",cnt:108813,sz:"M",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:157,bu:96.52,wa:93.98,hp:99.06,ins:62.87,tr:"#3 usage (108K); apple shape",tg:["#3 usage"],cl:"#ec4899"},
+{id:584,nm:"Tamara",cnt:175041,sz:"XL",bd:"regular",sk:"olive",hr:"dark brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:97.79,wa:82.55,hp:113.03,ins:62.23,tr:"#1 USAGE (175K!)",tg:["#1 usage"],cl:"#ef4444"},
+{id:600,nm:"Heather",cnt:56390,sz:"L",bd:"regular",sk:"very fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Hazel",h:165,bu:104.14,wa:91.44,hp:111.76,ins:67.31,tr:"Only very-fair L; hazel eyes",tg:["very fair L"],cl:"#8b5cf6"},
+{id:617,nm:"Aaliyah",cnt:23291,sz:"2XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"black",st:"tall",ag:"regular",ey:"Brown",h:175,bu:101.6,wa:99.06,hp:132.08,ins:63.5,tr:"Tallest Black curvy",tg:["tall Black curvy"],cl:"#10b981"},
+{id:599,nm:"Brooke",cnt:72438,sz:"2XL",bd:"curvy",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:170,bu:111.76,wa:92.71,hp:127,ins:65.41,tr:"Only fair blonde curvy; top 2XL",tg:["blonde curvy"],cl:"#f97316"},
+{id:619,nm:"Marisol",cnt:14040,sz:"2XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"latino",st:"tall",ag:"regular",ey:"Brown",h:177,bu:106.68,wa:106.68,hp:140.97,ins:69.85,tr:"Tallest curvy (177); bust=waist",tg:["tallest curvy"],cl:"#f59e0b"},
+{id:610,nm:"Madison",cnt:109276,sz:"2XL",bd:"curvy",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:157,bu:114.3,wa:91.44,hp:121.92,ins:58.42,tr:"#1 curvy (109K); petite+curvy",tg:["#1 curvy"],cl:"#f43f5e"},
+{id:587,nm:"Imani",cnt:11936,sz:"3XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:168,bu:121.92,wa:104.14,hp:129.54,ins:69.85,tr:"Longest inseam curvy 3XL",tg:["long legs 3XL"],cl:"#06b6d4"},
+{id:656,nm:"Ashley",cnt:69192,sz:"2XL",bd:"curvy",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:119.38,wa:115.57,hp:147.32,ins:26,tr:"Widest hips 2XL (147); extreme pear",tg:["widest 2XL"],cl:"#ec4899"},
+{id:588,nm:"Precious",cnt:27276,sz:"3XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:128.27,wa:120.65,hp:149.86,ins:60.96,tr:"Largest waist 3XL",tg:["largest waist"],cl:"#8b5cf6"},
+{id:618,nm:"Jasmine",cnt:39811,sz:"3XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:167,bu:111.76,wa:93.98,hp:139.7,ins:63.5,tr:"Hourglass at 3XL (ratio 0.67)",tg:["hourglass 3XL"],cl:"#10b981"},
+{id:673,nm:"Mackenzie",cnt:32716,sz:"3XL",bd:"curvy",sk:"fair",hr:"dark brown",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:172,bu:124.46,wa:107.95,hp:143.51,ins:25.5,tr:"Only fair 3XL; shortest inseam",tg:["only fair 3XL"],cl:"#f97316"},
+{id:700,nm:"Harper",cnt:22332,sz:"4XL",bd:"curvy",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Hazel",h:182,bu:142.24,wa:111.76,hp:148.59,ins:29,tr:"TALLEST (182); only blonde 4XL",tg:["tallest overall"],cl:"#f59e0b"},
+{id:662,nm:"Diamond",cnt:48929,sz:"4XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:170,bu:132.08,wa:114.3,hp:162.56,ins:26,tr:"WIDEST HIPS (162.6); top 4XL",tg:["widest hips ever"],cl:"#f43f5e"},
+{id:675,nm:"Aisha",cnt:14929,sz:"4XL",bd:"curvy",sk:"dark brown",hr:"black",eth:"african",st:"tall",ag:"regular",ey:"Brown",h:173,bu:149.86,wa:129.54,hp:154.94,ins:29,tr:"Only African; LARGEST BUST (149.9)",tg:["only African"],cl:"#ef4444"}
+];
+
+const mxC=Math.max(...MD.map(m=>m.cnt));
+const SO=['XS','S','M','L','XL','2XL','3XL','4XL'];
+const SC={XS:'#06b6d4',S:'#10b981',M:'#8b5cf6',L:'#f59e0b',XL:'#f97316','2XL':'#f43f5e','3XL':'#ec4899','4XL':'#ef4444'};
+const allPoses=["Front","45L","45R","Profile 90","Back","Close-Up"];
+const poseDB={"Front":"pose_front","45L":"pose_45l","45R":"pose_45r","Profile 90":"pose_profile","Back":"pose_back","Close-Up":"pose_closeup"};
+
+// Body weight estimates (kg) and build description per model
+const WT={682:{w:57,d:"slim/lean"},678:{w:61,d:"slender"},677:{w:57,d:"slim/lean"},614:{w:49,d:"slim/lean"},665:{w:54,d:"slim/lean"},590:{w:50,d:"slender"},631:{w:56,d:"slender"},620:{w:72,d:"medium/average"},596:{w:61,d:"medium/average"},616:{w:56,d:"slender"},621:{w:60,d:"medium/average"},593:{w:76,d:"full-figured"},595:{w:63,d:"medium/average"},605:{w:57,d:"slender"},613:{w:63,d:"medium/average"},594:{w:64,d:"medium/average"},624:{w:68,d:"full-figured"},598:{w:84,d:"plus-size"},609:{w:85,d:"full-figured"},604:{w:57,d:"medium/average"},584:{w:74,d:"plus-size"},600:{w:71,d:"full-figured"},617:{w:98,d:"plus-size/heavy"},599:{w:92,d:"plus-size"},619:{w:101,d:"plus-size/heavy"},610:{w:78,d:"plus-size"},587:{w:99,d:"plus-size/heavy"},656:{w:91,d:"plus-size/heavy"},588:{w:93,d:"plus-size/heavy"},618:{w:97,d:"plus-size/heavy"},673:{w:104,d:"plus-size/heavy"},700:{w:125,d:"heavy/full"},662:{w:109,d:"heavy/full"},675:{w:115,d:"heavy/full"}};
+let sel=[];
+
+// Prompt data
+const poseDesc={"Front":"Standing facing camera, arms relaxed at sides, feet shoulder-width, neutral expression, looking into lens.","45L":"Body turned 45° left, head slightly back toward camera, natural stance, arms relaxed.","45R":"Body turned 45° right, head slightly back toward camera, natural stance, arms relaxed.","Profile 90":"Full side profile (90°), standing straight, arms at sides, looking straight ahead.","Back":"Back fully toward camera, feet shoulder-width, head away, arms at sides.","Close-Up":"Head and shoulders close-up portrait. Face filling ~60% of frame. Same lighting as body shots but tighter crop. Skin texture, eye color, hair texture, facial structure. Neutral expression, slight natural smile. 85mm, shallow DOF, eyes sharp."};
+const studio="Seamless pure white background. Soft even lighting, minimal shadows. Subtle grounding shadow under feet only. Full body head-to-toe, centered. Neutral perspective. High sharpness, realistic casting photography.";
+const studioCU="Seamless pure white background. Soft even beauty lighting with subtle fill. Head and shoulders framing. High sharpness, realistic casting close-up.";
+const wardrobe="Black ribbed tank top with wide straps. Black fitted biker shorts. White minimal low-top sneakers, no branding. No logos, prints, accessories, jewelry, or props.";
+const wardrobeCU="Black ribbed tank top with wide straps visible at shoulders. No accessories, jewelry, or props.";
+const consistency="6-image set (Front, 45L, 45R, Profile 90, Back, Close-Up). Model identical across all. Uniform across all models. Natural casting look, NOT editorial.";
+const goalTxt="Generate an AI fashion model inspired by this type. Do NOT copy a real person. Maintain matching general attributes.";
+
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+function mkPrompt(m,poseName){
+  const isCU=poseName==='Close-Up';
+  const wt=WT[m.id]||{w:'?',d:'average'};
+  return `GOAL: ${goalTxt}\n\nMODEL: "${m.nm}" — ${cap(m.st)}, ${m.bd}, size ${m.sz}, ${m.h}cm, ~${wt.w}kg (${wt.d} build). ${cap(m.sk)} skin, ${m.eth}, ${m.hr} hair, ${m.ey.toLowerCase()} eyes. B${m.bu}/W${m.wa}/H${m.hp}cm${m.ins?', inseam '+m.ins+'cm':''}. Body weight should visually match a ${wt.d} ${m.h}cm woman weighing approximately ${wt.w}kg. Trait: ${m.tr}.\n\nPOSE [${poseName}]: ${poseDesc[poseName]}\n\nSTUDIO: ${isCU?studioCU:studio}\n\nWARDROBE: ${isCU?wardrobeCU:wardrobe}\n\nCONSISTENCY: ${consistency}`;
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+function cpP(btn){const t=btn.parentElement.textContent.replace('Copy','').trim();navigator.clipboard.writeText(t).then(()=>{btn.textContent='✓';toast('הפרומפט הועתק!');setTimeout(()=>btn.textContent='Copy',1200)})}
+
+// ── SUPABASE DATA LAYER ──
+function getStatus(mid){return dbStatus[mid]||{assigned_to:'',pose_front:false,pose_45l:false,pose_45r:false,pose_profile:false,pose_back:false,pose_closeup:false}}
+function getDoneCount(mid){const s=getStatus(mid);return allPoses.filter(p=>s[poseDB[p]]).length}
+
+// Feedback cache: "modelId_pose" → {status, note, created_by, created_at}
+let dbFeedback={};
+function getFB(mid,pose){return dbFeedback[mid+'_'+pose]||null}
+function getFBCounts(mid){let a=0,r=0;allPoses.forEach(p=>{const f=getFB(mid,p);if(f){if(f.status==='approved')a++;if(f.status==='rejected')r++}});return{approved:a,rejected:r}}
+
+async function loadAllData(){
+  if(!sb)return;
+  try{
+    const{data:statuses}=await sb.from('model_status').select('*');
+    if(statuses)statuses.forEach(r=>{dbStatus[r.id]=r});
+    const{data:images}=await sb.from('model_images').select('*');
+    if(images)images.forEach(r=>{dbImages[r.model_id+'_'+r.pose]=r.image_url});
+    const{data:feedback}=await sb.from('model_feedback').select('*').order('created_at',{ascending:false});
+    if(feedback)feedback.forEach(r=>{const k=r.model_id+'_'+r.pose;if(!dbFeedback[k])dbFeedback[k]=r});
+  }catch(e){console.warn('Load failed:',e)}
+}
+
+// Auto-assign: Shaked=15, Shlomit=19
+const SHAKED_IDS=[677,665,678,590,596,594,620,593,609,598,619,599,587,673,675];
+const SHLOMIT_IDS=[682,614,631,616,621,595,605,613,624,604,584,600,617,610,656,588,618,700,662];
+
+async function autoAssign(){
+  let updated=0;
+  for(const mid of SHAKED_IDS){
+    const s=getStatus(mid);
+    if(!s.assigned_to){
+      dbStatus[mid]={...s,assigned_to:'שקד',updated_by:'מערכת',updated_at:new Date().toISOString()};
+      if(sb)await sb.from('model_status').update({assigned_to:'שקד',updated_by:'מערכת',updated_at:new Date().toISOString()}).eq('id',mid);
+      updated++;
+    }
+  }
+  for(const mid of SHLOMIT_IDS){
+    const s=getStatus(mid);
+    if(!s.assigned_to){
+      dbStatus[mid]={...s,assigned_to:'שלומית',updated_by:'מערכת',updated_at:new Date().toISOString()};
+      if(sb)await sb.from('model_status').update({assigned_to:'שלומית',updated_by:'מערכת',updated_at:new Date().toISOString()}).eq('id',mid);
+      updated++;
+    }
+  }
+  if(updated)console.log(`Auto-assigned ${updated} models`);
+}
+
+async function updateAssign(mid,val){
+  dbStatus[mid]={...getStatus(mid),assigned_to:val,updated_at:new Date().toISOString(),updated_by:currentUser};
+  if(sb){const{error}=await sb.from('model_status').update({assigned_to:val,updated_by:currentUser,updated_at:new Date().toISOString()}).eq('id',mid);if(error)console.error('Assign error:',error)}
+  updateProgress();renderDataTable();
+}
+
+async function updateCheck(mid,pose,val){
+  const col=poseDB[pose];
+  const s={...getStatus(mid),[col]:val,updated_by:currentUser,updated_at:new Date().toISOString()};
+  dbStatus[mid]=s;
+  if(sb){const{error}=await sb.from('model_status').update({[col]:val,updated_by:currentUser,updated_at:new Date().toISOString()}).eq('id',mid);if(error)console.error('Check error:',error)}
+  updateProgress();fGal();renderDataTable();renderLiveGallery();
+}
+
+async function uploadImage(mid,pose,file){
+  const key=mid+'_'+pose.replace(/ /g,'_');
+  if(sb){
+    try{
+      const ext=file.name.split('.').pop()||'jpg';
+      const path=`${mid}/${pose.replace(/ /g,'_')}.${ext}`;
+      // Remove old file first (upsert can be flaky)
+      await sb.storage.from(STORAGE_BUCKET).remove([path]);
+      const{data,error}=await sb.storage.from(STORAGE_BUCKET).upload(path,file,{cacheControl:'3600',contentType:file.type});
+      if(error){console.error('Upload error:',error);toast('שגיאה בהעלאה: '+error.message);return}
+      const{data:urlData}=sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      const url=urlData.publicUrl+'?t='+Date.now();
+      dbImages[mid+'_'+pose]=url;
+      const{error:dbErr}=await sb.from('model_images').upsert({model_id:mid,pose:pose,image_url:url,uploaded_by:currentUser},{onConflict:'model_id,pose'});
+      if(dbErr)console.error('DB error:',dbErr);
+    }catch(e){console.error('Upload exception:',e);toast('שגיאה: '+e.message);return}
+  }else{
+    dbImages[mid+'_'+pose]=URL.createObjectURL(file);
+  }
+  fGal();renderLiveGallery();toast('תמונה הועלתה!');
+}
+
+async function removeImage(mid,pose){
+  delete dbImages[mid+'_'+pose];
+  if(sb){
+    const path=`${mid}/${pose.replace(/ /g,'_')}.jpg`;
+    await sb.storage.from(STORAGE_BUCKET).remove([path]);
+    await sb.from('model_images').delete().match({model_id:mid,pose:pose});
+  }
+  fGal();renderLiveGallery();toast('תמונה הוסרה');
+}
+
+// ── FEEDBACK SYSTEM ──
+async function saveFeedback(mid,pose,status,note){
+  const fb={model_id:mid,pose:pose,status:status,note:note||'',created_by:currentUser,created_at:new Date().toISOString()};
+  dbFeedback[mid+'_'+pose]=fb;
+  if(sb){
+    const{error}=await sb.from('model_feedback').upsert({model_id:mid,pose:pose,status:status,note:note||'',created_by:currentUser,created_at:new Date().toISOString()},{onConflict:'model_id,pose,created_at'});
+    if(error)console.error('Feedback error:',error);
+  }
+  fGal();renderDataTable();renderLiveGallery();
+  toast(status==='approved'?'✅ מאושר!':'❌ סומן לתיקון');
+  closeFBModal();
+}
+
+function openFBModal(mid,pose){
+  const m=MD.find(x=>x.id===mid);if(!m)return;
+  const img=dbImages[mid+'_'+pose]||'';
+  const existing=getFB(mid,pose);
+  const curStatus=existing?existing.status:'pending';
+  const curNote=existing?existing.note:'';
+  document.getElementById('fbModal').innerHTML=`
+    <div class="fb-modal-overlay" onclick="if(event.target===this)closeFBModal()">
+      <div class="fb-modal">
+        <h4>${m.nm} — ${pose}</h4>
+        ${img?`<img class="fb-m-img" src="${img}"/>`:`<div class="fb-m-img" style="display:flex;align-items:center;justify-content:center;color:var(--tx3)">אין תמונה</div>`}
+        <div class="fb-m-btns">
+          <div class="fb-m-btn ${curStatus==='approved'?'sel-approved':''}" id="fbBtnOk" onclick="toggleFBBtn('approved')">✅ מאושר</div>
+          <div class="fb-m-btn ${curStatus==='rejected'?'sel-rejected':''}" id="fbBtnNo" onclick="toggleFBBtn('rejected')">❌ צריך תיקון</div>
+        </div>
+        <textarea id="fbNote" placeholder="הערה (אופציונלי) — מה צריך לתקן?">${curNote}</textarea>
+        <div class="fb-m-actions">
+          <button class="btn btn-ghost" onclick="closeFBModal()">ביטול</button>
+          <button class="btn btn-ac" onclick="submitFB(${mid},'${pose}')">שמור</button>
+        </div>
+      </div>
+    </div>`;
+  window._fbStatus=curStatus;
+}
+
+function toggleFBBtn(s){
+  window._fbStatus=s;
+  document.getElementById('fbBtnOk').className='fb-m-btn '+(s==='approved'?'sel-approved':'');
+  document.getElementById('fbBtnNo').className='fb-m-btn '+(s==='rejected'?'sel-rejected':'');
+}
+
+function submitFB(mid,pose){
+  const note=document.getElementById('fbNote').value;
+  saveFeedback(mid,pose,window._fbStatus||'pending',note);
+}
+
+function closeFBModal(){document.getElementById('fbModal').innerHTML=''}
+
+// ── REAL-TIME SUBSCRIPTION ──
+function subscribeRealtime(){
+  if(!sb)return;
+  sb.channel('model_status_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_status'},payload=>{
+    if(payload.new){dbStatus[payload.new.id]=payload.new;updateProgress();fGal();renderDataTable();renderLiveGallery();
+      if(payload.new.updated_by&&payload.new.updated_by!==currentUser){
+        const m=MD.find(x=>x.id===payload.new.id);
+        toast(`${payload.new.updated_by} עדכן/ה את ${m?m.nm:'#'+payload.new.id}`);
+      }
+    }
+  }).subscribe();
+  sb.channel('model_images_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_images'},payload=>{
+    if(payload.new){dbImages[payload.new.model_id+'_'+payload.new.pose]=payload.new.image_url;fGal();renderLiveGallery();renderDataTable();
+      if(payload.new.uploaded_by&&payload.new.uploaded_by!==currentUser){toast(`${payload.new.uploaded_by} העלה/תה תמונה חדשה`);}
+    }
+    if(payload.eventType==='DELETE'&&payload.old){delete dbImages[payload.old.model_id+'_'+payload.old.pose];fGal();renderLiveGallery();renderDataTable();}
+  }).subscribe();
+  sb.channel('model_feedback_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_feedback'},payload=>{
+    if(payload.new){dbFeedback[payload.new.model_id+'_'+payload.new.pose]=payload.new;fGal();renderDataTable();renderLiveGallery();
+      if(payload.new.created_by&&payload.new.created_by!==currentUser){
+        const m=MD.find(x=>x.id===payload.new.model_id);
+        toast(`${payload.new.created_by}: ${payload.new.status==='approved'?'✅':'❌'} ${m?m.nm:''} ${payload.new.pose}`);
+      }
+    }
+  }).subscribe();
+}
+
+// ── PROGRESS ──
+function updateProgress(){
+  const total=MD.length*6;let done=0;const byWorker={};
+  MD.forEach(m=>{const s=getStatus(m.id);const d=allPoses.filter(p=>s[poseDB[p]]).length;done+=d;
+    const w=s.assigned_to;if(w){if(!byWorker[w])byWorker[w]={done:0,total:0};byWorker[w].total+=6;byWorker[w].done+=d}});
+  const pct=total?Math.round(done/total*100):0;
+  let wHtml=Object.entries(byWorker).map(([w,v])=>`<span class="pb-stat" style="color:${w==='שלומית'?'var(--gn)':'var(--ac)'}">${w}: ${v.done}/${v.total}</span>`).join('');
+  document.getElementById('progressBar').innerHTML=`<div class="pb-label">התקדמות</div><div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-stat">${done}/${total} (${pct}%)</div>${wHtml}`;
+}
+
+// ── TABS ──
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('p-'+t.dataset.tab).classList.add('active')}));
+
+// ── GALLERY ──
+!function(){const fd=[{k:'sz',l:'מידה',v:SO},{k:'bd',l:'סוג גוף',v:['regular','curvy']},{k:'sk',l:'גוון עור',v:[...new Set(MD.map(m=>m.sk))]},{k:'eth',l:'אתניות',v:[...new Set(MD.map(m=>m.eth))]},{k:'hr',l:'שיער',v:[...new Set(MD.map(m=>m.hr))]}];
+document.getElementById('filters').innerHTML=fd.map(f=>`<div class="fg"><label>${f.l}</label><select data-f="${f.k}" onchange="fGal()"><option value="">הכל</option>${f.v.map(v=>`<option value="${v}">${v}</option>`).join('')}</select></div>`).join('')+
+  `<div class="fg"><label>אחראי/ת</label><select data-f="assign" onchange="fGal()"><option value="">הכל</option><option value="שלומית">שלומית</option><option value="שקד">שקד</option><option value="unassigned">לא משויך</option></select></div><div class="fg"><label>סטטוס</label><select data-f="status" onchange="fGal()"><option value="">הכל</option><option value="done">הושלם</option><option value="partial">הושלם חלקית</option><option value="none">לא התחיל</option></select></div>`}();
+
+function fGal(){const fl={};document.querySelectorAll('[data-f]').forEach(s=>{if(s.value)fl[s.dataset.f]=s.value});
+  rGal(MD.filter(m=>{const st=getStatus(m.id);const dc=getDoneCount(m.id);
+    for(let[k,v] of Object.entries(fl)){if(k==='assign'){const a=st.assigned_to||'';if(v==='unassigned'&&a)return false;if(v!=='unassigned'&&a!==v)return false}
+    else if(k==='status'){if(v==='done'&&dc<6)return false;if(v==='partial'&&(dc===0||dc===6))return false;if(v==='none'&&dc>0)return false}
+    else if(m[k]!==v)return false}return true}))}
+
+function rGal(l){l=l||MD;document.getElementById('galleryGrid').innerHTML=l.map(m=>{
+  const st=getStatus(m.id);const dc=getDoneCount(m.id);const fbc=getFBCounts(m.id);
+  const slots=allPoses.map(p=>{const imgKey=m.id+'_'+p;const img=dbImages[imgKey]||'';const fb=getFB(m.id,p);
+    const fbBadge=fb?(fb.status==='approved'?`<div class="fb-badge approved">✅</div>`:fb.status==='rejected'?`<div class="fb-badge rejected">❌</div>`:''):'';
+    const fbNote=fb&&fb.note?`<div class="fb-note" title="${fb.note}">${fb.note}</div>`:'';
+    return `<div class="img-slot ${img?'has-img':''} ${fb?'fb-'+fb.status:''}" id="slot-${imgKey}">
+      ${img?`<img src="${img}"/><button class="remove-img" onclick="event.stopPropagation();removeImage(${m.id},'${p}')">&times;</button>${fbBadge}${fbNote}`:`<div class="slot-label">${p}<br>📷</div>`}
+      <input type="file" accept="image/*" onchange="handleUpload(event,${m.id},'${p}')"/>
+    </div>
+    <div class="fb-bar">${img?`<span class="fb-btn ${fb&&fb.status==='approved'?'fb-approved':''}" onclick="event.stopPropagation();saveFeedback(${m.id},'${p}','approved','')">✅</span><span class="fb-btn ${fb&&fb.status==='rejected'?'fb-rejected':''}" onclick="event.stopPropagation();openFBModal(${m.id},'${p}')">❌</span>`:''}</div>`}).join('');
+  const checks=allPoses.map(p=>{const checked=st[poseDB[p]]?'checked':'';const cls=st[poseDB[p]]?'chk-group done':'chk-group';
+    return `<span class="${cls}"><input type="checkbox" ${checked} onchange="updateCheck(${m.id},'${p}',this.checked)"/>${p.replace('Profile ','P').replace('Close-Up','CU')}</span>`}).join('');
+  return `<div class="card ${sel.includes(m.id)?'selected':''}" data-mid="${m.id}">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${m.cl};opacity:${sel.includes(m.id)?1:0}"></div>
+    <div class="card-top" onclick="tSel(${m.id})"><div><div class="card-name">${m.nm}</div><div class="card-id">#${m.id}${st.updated_by?` · עודכן ע"י ${st.updated_by}`:''}</div></div><span class="sz" style="background:${SC[m.sz]}20;color:${SC[m.sz]};border:1px solid ${SC[m.sz]}40">${m.sz}</span></div>
+    <div class="trait-badge" style="background:${m.cl}15;color:${m.cl};border:1px solid ${m.cl}28">${m.tr.split(';')[0].split('—')[0].trim()}</div>
+    <div class="clbl">${m.cnt.toLocaleString()} uses · ${dc}/6 generated${fbc.approved?` · ✅${fbc.approved}`:''}${fbc.rejected?` · ❌${fbc.rejected}`:''}</div>
+    <div class="cbar"><div class="cbar-f" style="width:${(dc/6*100).toFixed(0)}%;background:${dc===6?'var(--gn)':m.cl}"></div></div>
+    <div class="attrs"><span class="attr">${m.bd}</span><span class="attr">${m.sk}</span><span class="attr">${m.hr}</span><span class="attr">${m.eth}</span><span class="attr">${m.ey}</span><span class="attr">${m.st}</span></div>
+    <div class="meas"><div><div class="mv">${m.h}</div><div class="ml">Height</div></div><div><div class="mv">${(WT[m.id]||{w:'?'}).w}kg</div><div class="ml">Weight</div></div><div><div class="mv">${m.bu}</div><div class="ml">Bust</div></div><div><div class="mv">${m.wa}</div><div class="ml">Waist</div></div><div><div class="mv">${m.hp}</div><div class="ml">Hips</div></div></div>
+    <div class="card-assign">
+      <div class="fg" style="flex-direction:row;align-items:center;gap:4px"><label>אחראי:</label><select onchange="updateAssign(${m.id},this.value)"><option value="">—</option><option value="שלומית" ${st.assigned_to==='שלומית'?'selected':''}>שלומית</option><option value="שקד" ${st.assigned_to==='שקד'?'selected':''}>שקד</option></select></div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-right:auto">${checks}</div>
+    </div>
+    <div class="img-area">${slots}</div>
+  </div>`}).join('')}
+
+function handleUpload(e,mid,pose){const file=e.target.files[0];if(file)uploadImage(mid,pose,file)}
+function tSel(id){if(sel.includes(id))sel=sel.filter(s=>s!==id);else if(sel.length<2)sel.push(id);else{sel.shift();sel.push(id)}document.getElementById('ccnt').textContent=sel.length+'/2';document.getElementById('cbtn').disabled=sel.length!==2;fGal()}
+function clearSel(){sel=[];document.getElementById('ccnt').textContent='0/2';document.getElementById('cbtn').disabled=true;fGal();document.getElementById('cmpR').innerHTML=''}
+
+// ── COMPARE ──
+function runCompare(){const a=MD.find(m=>m.id===sel[0]),b=MD.find(m=>m.id===sel[1]);if(!a||!b)return;
+const tf=['sz','bd','sk','hr','eth','st','ey','ag'],tl={sz:'Size',bd:'Body',sk:'Skin',hr:'Hair',eth:'Ethnicity',st:'Stature',ey:'Eyes',ag:'Age'};
+const nf=[{k:'h',l:'Height'},{k:'bu',l:'Bust'},{k:'wa',l:'Waist'},{k:'hp',l:'Hips'},{k:'ins',l:'Inseam'},{k:'cnt',l:'Usage'}];
+let h=`<div class="sil-wrap"><div class="sil"><svg viewBox="0 0 80 200" width="60" height="${Math.round(a.h*.68)}"><ellipse cx="40" cy="18" rx="12" ry="14" fill="${a.cl}" opacity=".4"/><ellipse cx="40" cy="60" rx="${a.bu/7.5}" ry="18" fill="${a.cl}" opacity=".25"/><ellipse cx="40" cy="80" rx="${a.wa/8.5}" ry="8" fill="${a.cl}" opacity=".18"/><ellipse cx="40" cy="110" rx="${a.hp/7.5}" ry="18" fill="${a.cl}" opacity=".22"/></svg><div class="sil-lbl">${a.nm} ${a.sz}</div></div><div class="sil"><svg viewBox="0 0 80 200" width="60" height="${Math.round(b.h*.68)}"><ellipse cx="40" cy="18" rx="12" ry="14" fill="${b.cl}" opacity=".4"/><ellipse cx="40" cy="60" rx="${b.bu/7.5}" ry="18" fill="${b.cl}" opacity=".25"/><ellipse cx="40" cy="80" rx="${b.wa/8.5}" ry="8" fill="${b.cl}" opacity=".18"/><ellipse cx="40" cy="110" rx="${b.hp/7.5}" ry="18" fill="${b.cl}" opacity=".22"/></svg><div class="sil-lbl">${b.nm} ${b.sz}</div></div></div>`;
+h+=`<div class="cv"><div class="cc"><h3 style="color:${a.cl}">${a.nm}</h3><div class="cn">#${a.id}</div>`;tf.forEach(f=>{const s=a[f]===b[f];h+=`<div class="dr"><span class="dl">${tl[f]}</span><span class="dv ${s?'ds':'dd'}">${a[f]}</span></div>`});
+h+=`</div><div class="cc"><h3 style="color:${b.cl}">${b.nm}</h3><div class="cn">#${b.id}</div>`;tf.forEach(f=>{const s=a[f]===b[f];h+=`<div class="dr"><span class="dl">${tl[f]}</span><span class="dv ${s?'ds':'dd'}">${b[f]}</span></div>`});
+h+=`</div></div><div style="margin-top:14px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px"><h4 style="color:var(--tx2);margin-bottom:8px;font-size:11px">Measurements</h4>`;
+nf.forEach(f=>{const va=a[f.k]||0,vb=b[f.k]||0,mx=Math.max(va,vb)||1,d=Math.abs(va-vb).toFixed(1);h+=`<div class="dr"><span class="dl">${f.l}</span><span class="dv" style="color:${a.cl};min-width:45px;text-align:center">${va}</span><div class="dbw"><div class="dba" style="width:${(va/mx*100).toFixed(1)}%;background:${a.cl};opacity:.5"></div><div class="dbb" style="width:${(vb/mx*100).toFixed(1)}%;background:${b.cl};opacity:.3"></div></div><span class="dv" style="color:${b.cl};min-width:45px;text-align:center">${vb}</span><span style="font-size:9px;color:${+d>0?'var(--rs)':'var(--gn)'};font-family:'JetBrains Mono';min-width:40px;text-align:center">Δ${d}</span></div>`});
+h+=`</div>`;document.getElementById('cmpR').innerHTML=h}
+
+// ── PROMPTS ──
+!function(){const s=document.getElementById('pms');MD.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=`${m.nm} #${m.id} — ${m.sz} ${m.bd}`;s.appendChild(o)})}();
+function genPrompts(){
+  const sv=document.getElementById('pms').value;
+  const assignF=document.getElementById('pmsAssign').value;
+  const statusF=document.getElementById('pmsStatus').value;
+  let list=sv==='all'?MD:MD.filter(m=>m.id==sv);
+  if(assignF)list=list.filter(m=>(getStatus(m.id).assigned_to||'')===assignF);
+  if(statusF==='done')list=list.filter(m=>getDoneCount(m.id)===6);
+  if(statusF==='partial')list=list.filter(m=>{const d=getDoneCount(m.id);return d>0&&d<6});
+  if(statusF==='none')list=list.filter(m=>getDoneCount(m.id)===0);
+  if(!list.length){document.getElementById('pCon').innerHTML=`<div style="text-align:center;padding:40px;color:var(--tx3)">אין מודלים תואמים לפילטר</div>`;return}
+document.getElementById('pCon').innerHTML=list.map(m=>{const wt=WT[m.id]||{w:'?',d:'?'};return`<div class="psec"><h3>${m.nm} — #${m.id}</h3><div class="psub">${m.sz} · ${m.bd} · ${m.sk} · ${m.hr} · ${m.eth} · ${m.h}cm · ~${wt.w}kg (${wt.d})</div><div class="pose-tabs" data-mid="${m.id}">${allPoses.map((p,i)=>`<span class="pose-tab ${i===0?'active':''}" onclick="swPose(${m.id},${i})">${p}</span>`).join('')}</div>${allPoses.map((p,i)=>`<div class="pbox" id="pb-${m.id}-${i}" style="display:${i===0?'block':'none'}"><button class="cpb" onclick="cpP(this)">Copy</button>${mkPrompt(m,p)}</div>`).join('')}</div>`}).join('')}
+genPrompts();
+function swPose(mid,idx){document.querySelectorAll(`[data-mid="${mid}"] .pose-tab`).forEach((t,i)=>t.classList.toggle('active',i===idx));allPoses.forEach((_,i)=>{const el=document.getElementById(`pb-${mid}-${i}`);if(el)el.style.display=i===idx?'block':'none'})}
+
+// ── STATS ──
+!function(){const tot=MD.reduce((s,m)=>s+m.cnt,0),avgH=(MD.reduce((s,m)=>s+m.h,0)/MD.length).toFixed(1);
+const r=MD.filter(m=>m.bd==='regular').length,c=MD.filter(m=>m.bd==='curvy').length;
+document.getElementById('statsStrip').innerHTML=`<div class="sc"><div class="scv">${MD.length}</div><div class="scl">Models</div></div><div class="sc"><div class="scv">${(tot/1000).toFixed(0)}K</div><div class="scl">Total Usage</div></div><div class="sc"><div class="scv">${avgH}</div><div class="scl">Avg Height</div></div><div class="sc"><div class="scv">${r}/${c}</div><div class="scl">Reg / Curvy</div></div><div class="sc"><div class="scv">${new Set(MD.map(m=>m.eth)).size}</div><div class="scl">Ethnicities</div></div><div class="sc"><div class="scv">204</div><div class="scl">AI Prompts</div></div>`}();
+
+// ── CHARTS ──
+const co={responsive:true,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit'}}}},scales:{x:{ticks:{color:'#555578'},grid:{color:'#0e0e14'}},y:{ticks:{color:'#555578'},grid:{color:'#0e0e14'}}}};
+!function(){const sc={};SO.forEach(s=>sc[s]=0);MD.forEach(m=>sc[m.sz]++);new Chart(document.getElementById('c1'),{type:'bar',data:{labels:SO,datasets:[{data:SO.map(s=>sc[s]||0),backgroundColor:SO.map(s=>SC[s]),borderRadius:4,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}}}});
+const ec={};MD.forEach(m=>ec[m.eth]=(ec[m.eth]||0)+1);new Chart(document.getElementById('c2'),{type:'doughnut',data:{labels:Object.keys(ec),datasets:[{data:Object.values(ec),backgroundColor:['#8b5cf6','#06b6d4','#10b981','#f59e0b','#f43f5e','#ec4899'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#8888a8',font:{family:'Outfit'},padding:6}}}}});
+const rb={},cb2={};SO.forEach(s=>{rb[s]=0;cb2[s]=0});MD.forEach(m=>m.bd==='regular'?rb[m.sz]++:cb2[m.sz]++);new Chart(document.getElementById('c3'),{type:'bar',data:{labels:SO,datasets:[{label:'Regular',data:SO.map(s=>rb[s]),backgroundColor:'#8b5cf6',borderRadius:3,borderSkipped:false},{label:'Curvy',data:SO.map(s=>cb2[s]),backgroundColor:'#f43f5e',borderRadius:3,borderSkipped:false}]},options:{...co,scales:{...co.scales,x:{...co.scales.x,stacked:true},y:{...co.scales.y,stacked:true}}}});
+new Chart(document.getElementById('c4'),{type:'scatter',data:{datasets:[{label:'Regular',data:MD.filter(m=>m.bd==='regular').map(m=>({x:m.h,y:m.bu})),backgroundColor:'rgba(139,92,246,.5)',pointRadius:5},{label:'Curvy',data:MD.filter(m=>m.bd==='curvy').map(m=>({x:m.h,y:m.bu})),backgroundColor:'rgba(244,63,94,.5)',pointRadius:5}]},options:{...co,scales:{x:{...co.scales.x,title:{display:true,text:'Height',color:'#555578'}},y:{...co.scales.y,title:{display:true,text:'Bust',color:'#555578'}}}}});
+const skc={};MD.forEach(m=>skc[m.sk]=(skc[m.sk]||0)+1);const skCols={'olive':'#b8a070','fair':'#f0d8c0','dark brown':'#6b4226','very fair':'#fae8d8','light brown':'#c8a070','brown':'#8b6a40'};new Chart(document.getElementById('c5'),{type:'bar',data:{labels:Object.keys(skc),datasets:[{data:Object.values(skc),backgroundColor:Object.keys(skc).map(k=>skCols[k]||'#888'),borderRadius:4,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}},indexAxis:'y'}});
+const srt=[...MD].sort((a,b)=>b.cnt-a.cnt).slice(0,15);new Chart(document.getElementById('c6'),{type:'bar',data:{labels:srt.map(m=>m.nm),datasets:[{data:srt.map(m=>m.cnt),backgroundColor:srt.map(m=>m.cl+'88'),borderColor:srt.map(m=>m.cl),borderWidth:1,borderRadius:3,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}},indexAxis:'y'}})}();
+
+// ── PROFILES ──
+document.getElementById('traitsGrid').innerHTML=MD.map(m=>`<div class="tc"><div class="ta" style="background:${m.cl}">${m.nm[0]}</div><div class="ti"><h4>${m.nm}</h4><div class="tid">#${m.id} · ${m.sz} · ${m.bd} · ${m.h}cm · ${m.cnt.toLocaleString()}</div><div class="td">${m.tr}</div><div class="tt">${m.tg.map(t=>`<span class="ttg" style="background:${m.cl}18;color:${m.cl};border:1px solid ${m.cl}30">${t}</span>`).join('')}</div></div></div>`).join('');
+
+// ── QC — TECHNICAL ILLUSTRATIONS ──
+function drawBodySVG(bust,waist,hips,height,color,label){
+  const s=0.16; // scale factor
+  const bR=bust*s, wR=waist*s, hR=hips*s, ht=height*0.58;
+  const headR=8;
+  const svgH=ht+30;
+  return `<svg viewBox="0 0 60 ${svgH}" width="60" height="${Math.min(svgH,140)}" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="30" cy="${headR+2}" rx="${headR}" ry="${headR+1}" fill="${color}" opacity=".35"/>
+    <line x1="30" y1="${headR*2+4}" x2="30" y2="${headR*2+18}" stroke="${color}" stroke-width="1.5" opacity=".3"/>
+    <ellipse cx="30" cy="${headR*2+25}" rx="${bR}" ry="10" fill="${color}" opacity=".25"/>
+    <line x1="${30-bR}" y1="${headR*2+25}" x2="${30-wR}" y2="${headR*2+42}" stroke="${color}" stroke-width="1" opacity=".2"/>
+    <line x1="${30+bR}" y1="${headR*2+25}" x2="${30+wR}" y2="${headR*2+42}" stroke="${color}" stroke-width="1" opacity=".2"/>
+    <ellipse cx="30" cy="${headR*2+42}" rx="${wR}" ry="6" fill="${color}" opacity=".2"/>
+    <line x1="${30-wR}" y1="${headR*2+42}" x2="${30-hR}" y2="${headR*2+58}" stroke="${color}" stroke-width="1" opacity=".2"/>
+    <line x1="${30+wR}" y1="${headR*2+42}" x2="${30+hR}" y2="${headR*2+58}" stroke="${color}" stroke-width="1" opacity=".2"/>
+    <ellipse cx="30" cy="${headR*2+58}" rx="${hR}" ry="10" fill="${color}" opacity=".2"/>
+    <line x1="26" y1="${headR*2+68}" x2="24" y2="${ht+10}" stroke="${color}" stroke-width="1.5" opacity=".15"/>
+    <line x1="34" y1="${headR*2+68}" x2="36" y2="${ht+10}" stroke="${color}" stroke-width="1.5" opacity=".15"/>
+    <!-- measurement lines -->
+    <line x1="${30-bR}" y1="${headR*2+25}" x2="${30+bR}" y2="${headR*2+25}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
+    <line x1="${30-wR}" y1="${headR*2+42}" x2="${30+wR}" y2="${headR*2+42}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
+    <line x1="${30-hR}" y1="${headR*2+58}" x2="${30+hR}" y2="${headR*2+58}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
+    <text x="30" y="${ht+24}" text-anchor="middle" fill="${color}" font-size="7" font-family="JetBrains Mono,monospace" font-weight="700">${label}</text>
+  </svg>`;
+}
+
+function renderTechIllustrations(){
+  // Compute averages per size
+  const avgs={};
+  SO.forEach(s=>{
+    const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;
+    avgs[s]={bu:+(ms.reduce((a,m)=>a+m.bu,0)/ms.length).toFixed(1),wa:+(ms.reduce((a,m)=>a+m.wa,0)/ms.length).toFixed(1),hp:+(ms.reduce((a,m)=>a+m.hp,0)/ms.length).toFixed(1),h:+(ms.reduce((a,m)=>a+m.h,0)/ms.length).toFixed(0),n:ms.length};
+  });
+
+  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:16px">
+    <h4 style="font-size:14px;font-weight:700;color:var(--ac2);margin-bottom:6px">Technical Body Illustrations — Size Comparison</h4>
+    <p style="font-size:10px;color:var(--tx3);margin-bottom:16px">Average silhouette per size showing bust, waist, and hip proportions. Dashed lines = measurement points.</p>
+    <div style="display:flex;justify-content:center;align-items:flex-end;gap:8px;flex-wrap:wrap;padding:10px 0">`;
+
+  SO.filter(s=>avgs[s]).forEach(s=>{
+    const a=avgs[s];
+    html+=`<div style="text-align:center">
+      ${drawBodySVG(a.bu,a.wa,a.hp,a.h,SC[s],s)}
+      <div style="font-size:8px;color:var(--tx3);margin-top:4px;font-family:'JetBrains Mono',monospace;line-height:1.4">
+        B${a.bu}<br>W${a.wa}<br>H${a.hp}<br>${a.h}cm
+      </div>
+    </div>`;
+  });
+
+  html+=`</div>
+    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--sf2);border-radius:8px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:8px">📏 How to QC Measurements</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:1.6">
+          <strong style="color:var(--ac2)">Bust</strong> — Widest point around chest, under arms<br>
+          <strong style="color:var(--ac2)">Waist</strong> — Narrowest point of torso, above navel<br>
+          <strong style="color:var(--ac2)">Hips</strong> — Widest point around buttocks/hip bones<br>
+          <strong style="color:var(--ac2)">Inseam</strong> — Inner leg from crotch to ankle<br>
+          <strong style="color:var(--ac2)">W/H Ratio</strong> — Waist ÷ Hips (lower = more curves)
+        </div>
+      </div>
+      <div style="background:var(--sf2);border-radius:8px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:8px">⚠️ QC Red Flags</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:1.6">
+          <strong style="color:var(--rs)">W > H</strong> — Waist wider than hips (unnatural for most body types)<br>
+          <strong style="color:var(--rs)">W > B (regular)</strong> — Waist wider than bust on regular build<br>
+          <strong style="color:var(--rs)">Height OOB</strong> — Height outside 150–195cm range<br>
+          <strong style="color:var(--gn)">W/H < 0.75</strong> — Strong hourglass / pear shape<br>
+          <strong style="color:var(--gn)">W/H > 0.90</strong> — Straight / apple shape
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('techIllustrations').innerHTML=html;
+
+  // Size comparison radar/bar chart
+  const szLabels=SO.filter(s=>avgs[s]);
+  new Chart(document.getElementById('cSizeCompare'),{
+    type:'bar',
+    data:{labels:szLabels,datasets:[
+      {label:'Bust',data:szLabels.map(s=>avgs[s].bu),backgroundColor:'#8b5cf688',borderColor:'#8b5cf6',borderWidth:1,borderRadius:3},
+      {label:'Waist',data:szLabels.map(s=>avgs[s].wa),backgroundColor:'#f59e0b88',borderColor:'#f59e0b',borderWidth:1,borderRadius:3},
+      {label:'Hips',data:szLabels.map(s=>avgs[s].hp),backgroundColor:'#f43f5e88',borderColor:'#f43f5e',borderWidth:1,borderRadius:3}
+    ]},
+    options:{...co,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit'}}}},scales:{x:{ticks:{color:'#555578'},grid:{color:'#15151e'}},y:{ticks:{color:'#555578'},grid:{color:'#15151e'},title:{display:true,text:'cm',color:'#555578'}}}}
+  });
+}
+
+// ── QC TABLE ──
+!function(){const sizeRanges={};SO.forEach(s=>{const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;sizeRanges[s]={count:ms.length,hMin:Math.min(...ms.map(m=>m.h)),hMax:Math.max(...ms.map(m=>m.h)),buMin:Math.min(...ms.map(m=>m.bu)),buMax:Math.max(...ms.map(m=>m.bu)),waMin:Math.min(...ms.map(m=>m.wa)),waMax:Math.max(...ms.map(m=>m.wa)),hpMin:Math.min(...ms.map(m=>m.hp)),hpMax:Math.max(...ms.map(m=>m.hp))}});
+document.getElementById('sizeRef').innerHTML=`<div class="size-ref"><h4>Size Range Reference</h4><div class="sr-grid">${SO.filter(s=>sizeRanges[s]).map(s=>{const r=sizeRanges[s];return`<div class="sr-card"><div class="sr-sz" style="color:${SC[s]}">${s}</div><div class="sr-range"><strong>${r.count}</strong> models<br>H: ${r.hMin}–${r.hMax}<br>B: ${r.buMin}–${r.buMax}<br>W: ${r.waMin}–${r.waMax}<br>Hp: ${r.hpMin}–${r.hpMax}</div></div>`}).join('')}</div></div>`;
+renderTechIllustrations();
+const sorted=[...MD].sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);return ai!==bi?ai-bi:a.h-b.h});
+let h=`<thead><tr><th>Name</th><th>ID</th><th>Size</th><th>Body</th><th>Height</th><th>Bust</th><th>Waist</th><th>Hips</th><th>Inseam</th><th>W/H</th><th>B-W</th><th>H-W</th><th>Skin</th><th>Hair</th><th>Eth</th><th>Eyes</th><th>QC</th></tr></thead><tbody>`;
+sorted.forEach(m=>{const whr=m.hp?(m.wa/m.hp).toFixed(2):'—';const bwD=(m.bu-m.wa).toFixed(1);const hwD=(m.hp-m.wa).toFixed(1);const issues=[];if(m.wa>m.hp)issues.push('W>H');if(m.bu<70)issues.push('Low bust');if(m.wa>m.bu&&m.bd==='regular')issues.push('W>B');
+h+=`<tr><td class="qc-name">${m.nm}</td><td style="color:var(--tx3)">#${m.id}</td><td style="color:${SC[m.sz]};font-weight:700">${m.sz}</td><td>${m.bd}</td><td>${m.h}</td><td>${m.bu}</td><td>${m.wa}</td><td>${m.hp}</td><td>${m.ins??'—'}</td><td>${whr}</td><td>${bwD}</td><td>${hwD}</td><td>${m.sk}</td><td>${m.hr}</td><td>${m.eth}</td><td>${m.ey}</td><td class="${issues.length?'qc-fail':'qc-pass'}">${issues.length?issues.join(', '):'✓'}</td></tr>`});
+h+='</tbody>';document.getElementById('qcTable').innerHTML=h}();
+
+// ── LIVE GALLERY (Overview synced with uploaded images) ──
+function renderLiveGallery(){
+  const modelsWithImages=MD.filter(m=>allPoses.some(p=>dbImages[m.id+'_'+p]));
+  const modelsWithout=MD.filter(m=>!allPoses.some(p=>dbImages[m.id+'_'+p]));
+  const doneModels=MD.filter(m=>getDoneCount(m.id)===6);
+
+  if(!modelsWithImages.length&&!doneModels.length){
+    document.getElementById('liveGallery').innerHTML=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center">
+      <div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">📸 Generated Models Gallery</div>
+      <div style="font-size:11px;color:var(--tx3)">עדיין לא הועלו תמונות — הן יופיעו כאן אוטומטית כשתעלו מהגלריה</div>
+    </div>`;
+    return;
+  }
+
+  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><span style="font-size:14px;font-weight:700;color:var(--ac2)">📸 Generated Models</span>
+      <span style="font-size:10px;color:var(--tx3);margin-right:8px">${modelsWithImages.length} with images · ${doneModels.length} complete</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">`;
+
+  MD.forEach(m=>{
+    const frontImg=dbImages[m.id+'_Front']||dbImages[m.id+'_Close-Up']||dbImages[m.id+'_45L']||dbImages[m.id+'_45R']||null;
+    const dc=getDoneCount(m.id);
+    const hasAny=allPoses.some(p=>dbImages[m.id+'_'+p]);
+
+    html+=`<div style="background:var(--sf2);border:1px solid ${dc===6?'var(--gn)':hasAny?'var(--ac)':'var(--bd)'};border-radius:10px;overflow:hidden;transition:all .2s">
+      <div style="aspect-ratio:3/4;background:var(--sf3);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:24px;opacity:.15">👤</div>`}
+      </div>
+      <div style="padding:8px;text-align:center">
+        <div style="font-size:11px;font-weight:700">${m.nm}</div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace">${m.sz} · ${dc}/6</div>
+        <div style="height:3px;border-radius:2px;background:var(--sf3);margin-top:4px;overflow:hidden"><div style="height:100%;width:${(dc/6*100).toFixed(0)}%;background:${dc===6?'var(--gn)':'var(--ac)'};border-radius:2px"></div></div>
+      </div>
+    </div>`;
+  });
+
+  html+=`</div></div>`;
+  document.getElementById('liveGallery').innerHTML=html;
+}
+
+// ── TABLE (dynamic — synced with Supabase state) ──
+function renderDataTable(){
+  const cols=[{k:'nm',l:'Name'},{k:'id',l:'ID'},{k:'_assign',l:'Assigned To'},{k:'_status',l:'Status'},{k:'_done',l:'Progress'},{k:'_review',l:'QC Review'},{k:'sz',l:'Size'},{k:'h',l:'Height'},{k:'bd',l:'Body'},{k:'sk',l:'Skin'},{k:'hr',l:'Hair'},{k:'eth',l:'Eth'},{k:'ey',l:'Eyes'},{k:'bu',l:'Bust'},{k:'wa',l:'Waist'},{k:'hp',l:'Hips'},{k:'ins',l:'Inseam'},{k:'cnt',l:'Usage'},{k:'tr',l:'Trait'}];
+  let h='<thead><tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr></thead><tbody>';
+  MD.forEach(m=>{
+    const st=getStatus(m.id);
+    const dc=getDoneCount(m.id);
+    const isDone=dc===6;
+    const assignColor=st.assigned_to==='שלומית'?'var(--gn)':st.assigned_to==='שקד'?'var(--ac)':'var(--tx3)';
+    const rowBg=isDone?'rgba(16,185,129,.06)':'';
+    h+=`<tr style="background:${rowBg}">`;
+    cols.forEach(c=>{
+      let v;
+      if(c.k==='_assign') v=`<span style="color:${assignColor};font-weight:600">${st.assigned_to||'—'}</span>`;
+      else if(c.k==='_status') v=isDone?`<span style="color:var(--gn);font-weight:700">✅ הושלם</span>`:dc>0?`<span style="color:var(--am);font-weight:600">🔄 הושלם חלקית ${dc}/6</span>`:`<span style="color:var(--tx3)">⬜ לא התחיל</span>`;
+      else if(c.k==='_done') v=`<div style="width:60px;height:5px;background:var(--sf3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle"><div style="height:100%;width:${(dc/6*100).toFixed(0)}%;background:${isDone?'var(--gn)':'var(--ac)'};border-radius:3px"></div></div> <span style="font-size:9px;color:var(--tx3)">${dc}/6</span>`;
+      else if(c.k==='_review'){const fbc=getFBCounts(m.id);const allApproved=fbc.approved===6;v=allApproved?`<span style="color:var(--gn);font-weight:700">✅ כל 6 מאושרות</span>`:fbc.approved||fbc.rejected?`<span style="color:var(--gn)">✅${fbc.approved}</span> <span style="color:var(--rs)">❌${fbc.rejected}</span> <span style="color:var(--tx3)">⏳${6-fbc.approved-fbc.rejected}</span>`:`<span style="color:var(--tx3)">—</span>`}
+      else if(c.k==='cnt') v=m[c.k].toLocaleString();
+      else if(c.k==='id') v='#'+m[c.k];
+      else v=m[c.k]??'—';
+      h+=`<td>${v}</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody>';
+  document.getElementById('dataTable').innerHTML=h;
+}
+renderDataTable();
+
+// ── BOOT ──
+async function boot(){
+  if(sb){
+    try{
+      const{data,error}=await sb.from('model_status').select('id',{count:'exact',head:true});
+      if(error){console.error('Connection test failed:',error);document.getElementById('connBanner').classList.add('show');document.getElementById('syncStatus').innerHTML='❌ שגיאת חיבור';isConnected=false}
+      else{console.log('Supabase connected OK')}
+    }catch(e){console.error('Connection error:',e)}
+  }
+  await loadAllData();
+  await autoAssign();
+  updateProgress();
+  fGal();
+  renderLiveGallery();
+  renderDataTable();
+  subscribeRealtime();
+  genPrompts();
+  document.getElementById('syncStatus').innerHTML=isConnected?'<span class="live-dot"></span> מחובר ב-Real-Time':'⚡ מצב מקומי';
+}
+boot();
+</script>
+</body>
+</html>
