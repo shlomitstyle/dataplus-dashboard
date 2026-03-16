@@ -111,20 +111,33 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .scv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ac2)}
 .scl{font-size:8px;color:var(--tx3);margin-top:2px}
 
-/* QC */
-.qc-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--bd);margin-bottom:16px}
+/* QC — Premium Design */
+.qc-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--bd);margin-bottom:16px;background:var(--sf)}
 .qc-wrap table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:center}
-.qc-wrap th{background:var(--sf2);padding:7px 8px;font-weight:600;color:var(--tx2);font-size:8px;text-transform:uppercase;letter-spacing:.5px;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--ac)}
-.qc-wrap td{padding:6px 8px;border-top:1px solid var(--bd);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px}
-.qc-wrap tr:hover td{background:var(--sf)}
-.qc-pass{color:var(--gn);font-weight:600}.qc-fail{color:var(--rs);font-weight:600}
-.qc-name{font-family:'Outfit',sans-serif;font-weight:600;text-align:left;padding-left:12px}
-.size-ref{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
-.size-ref h4{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--ac2)}
-.sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
-.sr-card{background:var(--sf2);border:1px solid var(--bd);border-radius:7px;padding:8px;text-align:center}
-.sr-sz{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-bottom:3px}
-.sr-range{font-size:9px;color:var(--tx2);line-height:1.5}
+.qc-wrap th{background:linear-gradient(180deg,var(--sf2),var(--sf));padding:10px 10px;font-weight:700;color:var(--ac2);font-size:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--ac)}
+.qc-wrap td{padding:8px 10px;border-top:1px solid rgba(37,37,53,.6);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px;transition:background .15s}
+.qc-wrap tr:hover td{background:rgba(139,92,246,.04)}
+.qc-wrap tr.qc-row-done{background:rgba(16,185,129,.03)}
+.qc-wrap tr.qc-row-fail td{background:rgba(244,63,94,.03)}
+.qc-pass{color:var(--gn);font-weight:700}.qc-fail{color:var(--rs);font-weight:700}
+.qc-name{font-family:'Outfit',sans-serif;font-weight:700;text-align:left;padding-left:14px;font-size:11px}
+.qc-meas{font-weight:600;color:var(--tx)}
+.qc-meas-label{font-size:7px;color:var(--tx3);display:block;margin-top:1px}
+.qc-ratio{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600}
+.qc-ratio-good{background:var(--gnd);color:var(--gn)}
+.qc-ratio-warn{background:rgba(245,158,11,.12);color:var(--am)}
+.qc-ratio-bad{background:var(--rsd);color:var(--rs)}
+.qc-size-divider td{background:var(--sf2)!important;padding:6px 14px!important;text-align:left!important;font-family:'Outfit',sans-serif!important;font-weight:700!important;font-size:11px!important;color:var(--ac2)!important;letter-spacing:.5px;border-top:2px solid var(--bd)!important}
+
+.size-ref{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-bottom:16px}
+.size-ref h4{font-size:14px;font-weight:800;margin-bottom:14px;color:var(--ac2)}
+.sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sr-card{background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:12px;text-align:center;transition:all .2s;position:relative;overflow:hidden}
+.sr-card:hover{border-color:var(--ac);transform:translateY(-1px)}
+.sr-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.sr-sz{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;margin-bottom:6px}
+.sr-range{font-size:9px;color:var(--tx2);line-height:1.6}
+.sr-weight{font-size:10px;color:var(--tx);font-weight:600;margin-top:4px;padding-top:4px;border-top:1px solid var(--bd)}
 
 .tw{overflow-x:auto;border-radius:12px;border:1px solid var(--bd)}
 .tw table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:left}
@@ -223,7 +236,16 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
   <div id="p-profiles" class="panel"><h3 style="font-size:15px;margin-bottom:4px">מה מייחד כל מודל?</h3><p style="color:var(--tx2);font-size:11px;margin-bottom:14px">שם, סממנים, הבדלים</p><div class="tg" id="traitsGrid"></div></div>
   <div id="p-compare" class="panel"><div class="chdr"><span style="font-size:12px;color:var(--tx2)">בחרי 2 מגלריה ←</span><span class="ccnt" id="ccnt">0/2</span><button class="btn btn-ac" id="cbtn" disabled onclick="runCompare()">השווי</button><button class="btn btn-ghost" onclick="clearSel()">נקי</button></div><div id="cmpR"></div></div>
   <div id="p-prompts" class="panel"><p style="color:var(--tx2);margin-bottom:10px;font-size:11px">פרומפטים מלאים — 5 פוזות + Close-Up. כפתור העתקה על כל פרומפט.</p><div class="filters" style="margin-bottom:10px"><div class="fg"><label>אחראי/ת</label><select id="pmsAssign" onchange="genPrompts()"><option value="">הכל</option><option value="שלומית">שלומית</option><option value="שקד">שקד</option></select></div><div class="fg"><label>מודל</label><select id="pms" onchange="genPrompts()"><option value="all">כל המודלים</option></select></div><div class="fg"><label>סטטוס</label><select id="pmsStatus" onchange="genPrompts()"><option value="">הכל</option><option value="done">הושלם</option><option value="partial">הושלם חלקית</option><option value="none">לא התחיל</option></select></div></div><div id="pCon"></div></div>
-  <div id="p-qc" class="panel"><h3 style="font-size:15px;margin-bottom:4px">QC Measurement Reference</h3><p style="color:var(--tx2);font-size:11px;margin-bottom:14px">טבלת מידות, איורים טכניים, והבדלים בין מידות</p><div id="techIllustrations"></div><div id="sizeRef"></div><div id="sizeCompareChart" class="cb" style="margin-bottom:16px;padding:18px"><h4 style="margin-bottom:12px">Size Comparison — Average Measurements</h4><canvas id="cSizeCompare"></canvas></div><div class="qc-wrap"><table id="qcTable"></table></div></div>
+  <div id="p-qc" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">QC Measurement Reference</h3><p style="color:var(--tx2);font-size:11px">Visual guide + measurement table for quality control verification</p></div>
+      <div class="badge" style="font-size:11px">34 Models · 8 Sizes</div>
+    </div>
+    <div id="techIllustrations"></div>
+    <div id="sizeRef"></div>
+    <div id="sizeCompareChart" class="cb" style="margin-bottom:16px;padding:18px"><h4 style="margin-bottom:12px">Average Measurements by Size</h4><canvas id="cSizeCompare"></canvas></div>
+    <div id="qcTableSection"></div>
+  </div>
   <div id="p-table" class="panel"><div class="tw"><table id="dataTable"></table></div></div>
 </div>
 <div id="fbModal"></div>
@@ -594,104 +616,154 @@ const srt=[...MD].sort((a,b)=>b.cnt-a.cnt).slice(0,15);new Chart(document.getEle
 // ── PROFILES ──
 document.getElementById('traitsGrid').innerHTML=MD.map(m=>`<div class="tc"><div class="ta" style="background:${m.cl}">${m.nm[0]}</div><div class="ti"><h4>${m.nm}</h4><div class="tid">#${m.id} · ${m.sz} · ${m.bd} · ${m.h}cm · ${m.cnt.toLocaleString()}</div><div class="td">${m.tr}</div><div class="tt">${m.tg.map(t=>`<span class="ttg" style="background:${m.cl}18;color:${m.cl};border:1px solid ${m.cl}30">${t}</span>`).join('')}</div></div></div>`).join('');
 
-// ── QC — TECHNICAL ILLUSTRATIONS ──
-function drawBodySVG(bust,waist,hips,height,color,label){
-  const s=0.16; // scale factor
-  const bR=bust*s, wR=waist*s, hR=hips*s, ht=height*0.58;
-  const headR=8;
-  const svgH=ht+30;
-  return `<svg viewBox="0 0 60 ${svgH}" width="60" height="${Math.min(svgH,140)}" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="30" cy="${headR+2}" rx="${headR}" ry="${headR+1}" fill="${color}" opacity=".35"/>
-    <line x1="30" y1="${headR*2+4}" x2="30" y2="${headR*2+18}" stroke="${color}" stroke-width="1.5" opacity=".3"/>
-    <ellipse cx="30" cy="${headR*2+25}" rx="${bR}" ry="10" fill="${color}" opacity=".25"/>
-    <line x1="${30-bR}" y1="${headR*2+25}" x2="${30-wR}" y2="${headR*2+42}" stroke="${color}" stroke-width="1" opacity=".2"/>
-    <line x1="${30+bR}" y1="${headR*2+25}" x2="${30+wR}" y2="${headR*2+42}" stroke="${color}" stroke-width="1" opacity=".2"/>
-    <ellipse cx="30" cy="${headR*2+42}" rx="${wR}" ry="6" fill="${color}" opacity=".2"/>
-    <line x1="${30-wR}" y1="${headR*2+42}" x2="${30-hR}" y2="${headR*2+58}" stroke="${color}" stroke-width="1" opacity=".2"/>
-    <line x1="${30+wR}" y1="${headR*2+42}" x2="${30+hR}" y2="${headR*2+58}" stroke="${color}" stroke-width="1" opacity=".2"/>
-    <ellipse cx="30" cy="${headR*2+58}" rx="${hR}" ry="10" fill="${color}" opacity=".2"/>
-    <line x1="26" y1="${headR*2+68}" x2="24" y2="${ht+10}" stroke="${color}" stroke-width="1.5" opacity=".15"/>
-    <line x1="34" y1="${headR*2+68}" x2="36" y2="${ht+10}" stroke="${color}" stroke-width="1.5" opacity=".15"/>
-    <!-- measurement lines -->
-    <line x1="${30-bR}" y1="${headR*2+25}" x2="${30+bR}" y2="${headR*2+25}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
-    <line x1="${30-wR}" y1="${headR*2+42}" x2="${30+wR}" y2="${headR*2+42}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
-    <line x1="${30-hR}" y1="${headR*2+58}" x2="${30+hR}" y2="${headR*2+58}" stroke="${color}" stroke-width=".5" stroke-dasharray="2"/>
-    <text x="30" y="${ht+24}" text-anchor="middle" fill="${color}" font-size="7" font-family="JetBrains Mono,monospace" font-weight="700">${label}</text>
+// ── QC — TECHNICAL ILLUSTRATIONS (Premium) ──
+function drawBodySVG(bust,waist,hips,height,color,label,weight){
+  const sc=0.14;
+  const bR=bust*sc, wR=waist*sc, hR=hips*sc;
+  const svgW=Math.max(70, hR*2+20);
+  const cx=svgW/2;
+  const headR=7;const neckY=headR*2+6;const bustY=neckY+18;const waistY=bustY+16;const hipY=waistY+16;const legEnd=height*0.42;
+  return `<svg viewBox="0 0 ${svgW} ${legEnd+28}" width="${Math.max(65,svgW*0.7)}" height="${Math.min(legEnd+28,160)}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g_${label}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".4"/><stop offset="100%" stop-color="${color}" stop-opacity=".08"/></linearGradient></defs>
+    <ellipse cx="${cx}" cy="${headR+2}" rx="${headR}" ry="${headR+1}" fill="${color}" opacity=".3"/>
+    <path d="M${cx},${neckY} C${cx},${neckY} ${cx-bR},${bustY-4} ${cx-bR},${bustY} L${cx-wR},${waistY} L${cx-hR},${hipY} L${cx-hR*.6},${legEnd+8} L${cx-hR*.3},${legEnd+8} L${cx},${hipY+8} L${cx+hR*.3},${legEnd+8} L${cx+hR*.6},${legEnd+8} L${cx+hR},${hipY} L${cx+wR},${waistY} L${cx+bR},${bustY} C${cx+bR},${bustY-4} ${cx},${neckY} ${cx},${neckY}Z" fill="url(#g_${label})" stroke="${color}" stroke-width=".6" stroke-opacity=".3"/>
+    <line x1="${cx-bR-4}" y1="${bustY}" x2="${cx+bR+4}" y2="${bustY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <line x1="${cx-wR-4}" y1="${waistY}" x2="${cx+wR+4}" y2="${waistY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <line x1="${cx-hR-4}" y1="${hipY}" x2="${cx+hR+4}" y2="${hipY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <text x="${cx+bR+6}" y="${bustY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">B</text>
+    <text x="${cx+wR+6}" y="${waistY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">W</text>
+    <text x="${cx+hR+6}" y="${hipY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">H</text>
+    <text x="${cx}" y="${legEnd+24}" text-anchor="middle" fill="${color}" font-size="10" font-family="JetBrains Mono" font-weight="800">${label}</text>
   </svg>`;
 }
 
 function renderTechIllustrations(){
-  // Compute averages per size
-  const avgs={};
+  const avgs={};const avgW={};
   SO.forEach(s=>{
     const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;
     avgs[s]={bu:+(ms.reduce((a,m)=>a+m.bu,0)/ms.length).toFixed(1),wa:+(ms.reduce((a,m)=>a+m.wa,0)/ms.length).toFixed(1),hp:+(ms.reduce((a,m)=>a+m.hp,0)/ms.length).toFixed(1),h:+(ms.reduce((a,m)=>a+m.h,0)/ms.length).toFixed(0),n:ms.length};
+    avgW[s]=Math.round(ms.reduce((a,m)=>a+(WT[m.id]||{w:60}).w,0)/ms.length);
   });
 
-  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:16px">
-    <h4 style="font-size:14px;font-weight:700;color:var(--ac2);margin-bottom:6px">Technical Body Illustrations — Size Comparison</h4>
-    <p style="font-size:10px;color:var(--tx3);margin-bottom:16px">Average silhouette per size showing bust, waist, and hip proportions. Dashed lines = measurement points.</p>
-    <div style="display:flex;justify-content:center;align-items:flex-end;gap:8px;flex-wrap:wrap;padding:10px 0">`;
+  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:4px;height:24px;border-radius:2px;background:var(--ac)"></div>
+      <div><div style="font-size:15px;font-weight:800;color:var(--tx)">Body Silhouette Comparison</div>
+      <div style="font-size:10px;color:var(--tx3)">Average body proportions per size · Dashed lines show bust, waist, hip measurement points</div></div>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;padding:16px 0;background:var(--sf2);border-radius:12px;border:1px solid var(--bd)">`;
 
   SO.filter(s=>avgs[s]).forEach(s=>{
     const a=avgs[s];
-    html+=`<div style="text-align:center">
-      ${drawBodySVG(a.bu,a.wa,a.hp,a.h,SC[s],s)}
-      <div style="font-size:8px;color:var(--tx3);margin-top:4px;font-family:'JetBrains Mono',monospace;line-height:1.4">
-        B${a.bu}<br>W${a.wa}<br>H${a.hp}<br>${a.h}cm
+    html+=`<div style="text-align:center;padding:8px 4px">
+      ${drawBodySVG(a.bu,a.wa,a.hp,a.h,SC[s],s,avgW[s])}
+      <div style="margin-top:6px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:6px 8px">
+        <div style="font-size:9px;color:var(--tx);line-height:1.5;font-family:'JetBrains Mono',monospace">
+          <span style="color:${SC[s]}">${a.h}cm</span> · <span style="color:${SC[s]}">${avgW[s]}kg</span><br>
+          B<span style="color:var(--tx2)">${a.bu}</span> W<span style="color:var(--tx2)">${a.wa}</span> H<span style="color:var(--tx2)">${a.hp}</span>
+        </div>
       </div>
     </div>`;
   });
 
   html+=`</div>
-    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div style="background:var(--sf2);border-radius:8px;padding:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:8px">📏 How to QC Measurements</div>
-        <div style="font-size:10px;color:var(--tx2);line-height:1.6">
-          <strong style="color:var(--ac2)">Bust</strong> — Widest point around chest, under arms<br>
-          <strong style="color:var(--ac2)">Waist</strong> — Narrowest point of torso, above navel<br>
-          <strong style="color:var(--ac2)">Hips</strong> — Widest point around buttocks/hip bones<br>
-          <strong style="color:var(--ac2)">Inseam</strong> — Inner leg from crotch to ankle<br>
-          <strong style="color:var(--ac2)">W/H Ratio</strong> — Waist ÷ Hips (lower = more curves)
+    <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--sf2);border-radius:10px;padding:16px;border:1px solid var(--bd)">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📏</span> Measurement Guide</div>
+        <div style="font-size:11px;color:var(--tx2);line-height:1.8">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--acd);color:var(--ac2);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">BUST</span> Widest point around chest, under arms</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(245,158,11,.1);color:var(--am);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">WAIST</span> Narrowest point of torso, above navel</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">HIPS</span> Widest point around buttocks/hip bones</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(6,182,212,.1);color:var(--cy);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">W/H</span> Waist ÷ Hips ratio (lower = more curves)</div>
         </div>
       </div>
-      <div style="background:var(--sf2);border-radius:8px;padding:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:8px">⚠️ QC Red Flags</div>
-        <div style="font-size:10px;color:var(--tx2);line-height:1.6">
-          <strong style="color:var(--rs)">W > H</strong> — Waist wider than hips (unnatural for most body types)<br>
-          <strong style="color:var(--rs)">W > B (regular)</strong> — Waist wider than bust on regular build<br>
-          <strong style="color:var(--rs)">Height OOB</strong> — Height outside 150–195cm range<br>
-          <strong style="color:var(--gn)">W/H < 0.75</strong> — Strong hourglass / pear shape<br>
-          <strong style="color:var(--gn)">W/H > 0.90</strong> — Straight / apple shape
+      <div style="background:var(--sf2);border-radius:10px;padding:16px;border:1px solid var(--bd)">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">⚠️</span> QC Red Flags</div>
+        <div style="font-size:11px;color:var(--tx2);line-height:1.8">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">FAIL</span> Waist wider than hips (W > H)</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">FAIL</span> Waist > Bust on regular build</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--gnd);color:var(--gn);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">OK</span> W/H &lt; 0.75 = strong hourglass/pear</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(245,158,11,.1);color:var(--am);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">NOTE</span> W/H &gt; 0.90 = straight/apple shape</div>
         </div>
       </div>
     </div>
   </div>`;
-
   document.getElementById('techIllustrations').innerHTML=html;
 
-  // Size comparison radar/bar chart
+  // Size comparison chart
   const szLabels=SO.filter(s=>avgs[s]);
   new Chart(document.getElementById('cSizeCompare'),{
     type:'bar',
     data:{labels:szLabels,datasets:[
-      {label:'Bust',data:szLabels.map(s=>avgs[s].bu),backgroundColor:'#8b5cf688',borderColor:'#8b5cf6',borderWidth:1,borderRadius:3},
-      {label:'Waist',data:szLabels.map(s=>avgs[s].wa),backgroundColor:'#f59e0b88',borderColor:'#f59e0b',borderWidth:1,borderRadius:3},
-      {label:'Hips',data:szLabels.map(s=>avgs[s].hp),backgroundColor:'#f43f5e88',borderColor:'#f43f5e',borderWidth:1,borderRadius:3}
+      {label:'Bust (cm)',data:szLabels.map(s=>avgs[s].bu),backgroundColor:'#8b5cf650',borderColor:'#8b5cf6',borderWidth:2,borderRadius:4},
+      {label:'Waist (cm)',data:szLabels.map(s=>avgs[s].wa),backgroundColor:'#f59e0b50',borderColor:'#f59e0b',borderWidth:2,borderRadius:4},
+      {label:'Hips (cm)',data:szLabels.map(s=>avgs[s].hp),backgroundColor:'#f43f5e50',borderColor:'#f43f5e',borderWidth:2,borderRadius:4},
+      {label:'Weight (kg)',data:szLabels.map(s=>avgW[s]),backgroundColor:'#06b6d450',borderColor:'#06b6d4',borderWidth:2,borderRadius:4,yAxisID:'y2'}
     ]},
-    options:{...co,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit'}}}},scales:{x:{ticks:{color:'#555578'},grid:{color:'#15151e'}},y:{ticks:{color:'#555578'},grid:{color:'#15151e'},title:{display:true,text:'cm',color:'#555578'}}}}
+    options:{responsive:true,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit',size:11},padding:16}}},scales:{x:{ticks:{color:'#8888a8',font:{size:12,weight:'bold'}},grid:{color:'#15151e'}},y:{ticks:{color:'#555578'},grid:{color:'#15151e'},title:{display:true,text:'cm',color:'#555578'}},y2:{position:'right',ticks:{color:'#06b6d4'},grid:{display:false},title:{display:true,text:'kg',color:'#06b6d4'}}}}
   });
 }
 
-// ── QC TABLE ──
-!function(){const sizeRanges={};SO.forEach(s=>{const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;sizeRanges[s]={count:ms.length,hMin:Math.min(...ms.map(m=>m.h)),hMax:Math.max(...ms.map(m=>m.h)),buMin:Math.min(...ms.map(m=>m.bu)),buMax:Math.max(...ms.map(m=>m.bu)),waMin:Math.min(...ms.map(m=>m.wa)),waMax:Math.max(...ms.map(m=>m.wa)),hpMin:Math.min(...ms.map(m=>m.hp)),hpMax:Math.max(...ms.map(m=>m.hp))}});
-document.getElementById('sizeRef').innerHTML=`<div class="size-ref"><h4>Size Range Reference</h4><div class="sr-grid">${SO.filter(s=>sizeRanges[s]).map(s=>{const r=sizeRanges[s];return`<div class="sr-card"><div class="sr-sz" style="color:${SC[s]}">${s}</div><div class="sr-range"><strong>${r.count}</strong> models<br>H: ${r.hMin}–${r.hMax}<br>B: ${r.buMin}–${r.buMax}<br>W: ${r.waMin}–${r.waMax}<br>Hp: ${r.hpMin}–${r.hpMax}</div></div>`}).join('')}</div></div>`;
-renderTechIllustrations();
-const sorted=[...MD].sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);return ai!==bi?ai-bi:a.h-b.h});
-let h=`<thead><tr><th>Name</th><th>ID</th><th>Size</th><th>Body</th><th>Height</th><th>Bust</th><th>Waist</th><th>Hips</th><th>Inseam</th><th>W/H</th><th>B-W</th><th>H-W</th><th>Skin</th><th>Hair</th><th>Eth</th><th>Eyes</th><th>QC</th></tr></thead><tbody>`;
-sorted.forEach(m=>{const whr=m.hp?(m.wa/m.hp).toFixed(2):'—';const bwD=(m.bu-m.wa).toFixed(1);const hwD=(m.hp-m.wa).toFixed(1);const issues=[];if(m.wa>m.hp)issues.push('W>H');if(m.bu<70)issues.push('Low bust');if(m.wa>m.bu&&m.bd==='regular')issues.push('W>B');
-h+=`<tr><td class="qc-name">${m.nm}</td><td style="color:var(--tx3)">#${m.id}</td><td style="color:${SC[m.sz]};font-weight:700">${m.sz}</td><td>${m.bd}</td><td>${m.h}</td><td>${m.bu}</td><td>${m.wa}</td><td>${m.hp}</td><td>${m.ins??'—'}</td><td>${whr}</td><td>${bwD}</td><td>${hwD}</td><td>${m.sk}</td><td>${m.hr}</td><td>${m.eth}</td><td>${m.ey}</td><td class="${issues.length?'qc-fail':'qc-pass'}">${issues.length?issues.join(', '):'✓'}</td></tr>`});
-h+='</tbody>';document.getElementById('qcTable').innerHTML=h}();
+// ── QC TABLE (Premium) ──
+!function(){
+  const sizeRanges={};
+  SO.forEach(s=>{const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;
+    const ws=ms.map(m=>(WT[m.id]||{w:0}).w);
+    sizeRanges[s]={count:ms.length,hMin:Math.min(...ms.map(m=>m.h)),hMax:Math.max(...ms.map(m=>m.h)),buMin:Math.min(...ms.map(m=>m.bu)),buMax:Math.max(...ms.map(m=>m.bu)),waMin:Math.min(...ms.map(m=>m.wa)),waMax:Math.max(...ms.map(m=>m.wa)),hpMin:Math.min(...ms.map(m=>m.hp)),hpMax:Math.max(...ms.map(m=>m.hp)),wMin:Math.min(...ws),wMax:Math.max(...ws)}});
+
+  document.getElementById('sizeRef').innerHTML=`<div class="size-ref"><h4>📐 Size Range Reference</h4><div class="sr-grid">${SO.filter(s=>sizeRanges[s]).map(s=>{const r=sizeRanges[s];return`<div class="sr-card" style="border-top:3px solid ${SC[s]}"><div class="sr-sz" style="color:${SC[s]}">${s}</div><div class="sr-range"><strong style="color:var(--tx)">${r.count}</strong> models<br>Height: ${r.hMin}–${r.hMax} cm<br>Bust: ${r.buMin}–${r.buMax}<br>Waist: ${r.waMin}–${r.waMax}<br>Hips: ${r.hpMin}–${r.hpMax}</div><div class="sr-weight">⚖️ ${r.wMin}–${r.wMax} kg</div></div>`}).join('')}</div></div>`;
+
+  renderTechIllustrations();
+
+  // Build premium QC table with size group dividers
+  const sorted=[...MD].sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);return ai!==bi?ai-bi:a.h-b.h});
+  let h=`<div class="qc-wrap"><table><thead><tr>
+    <th style="text-align:left;padding-left:14px">Model</th><th>ID</th><th>Size</th><th>Body</th><th>Weight</th>
+    <th>Height</th><th>Bust</th><th>Waist</th><th>Hips</th><th>Inseam</th>
+    <th>W/H Ratio</th><th>B−W</th><th>H−W</th><th>Shape</th><th>QC</th>
+  </tr></thead><tbody>`;
+
+  let lastSz='';
+  sorted.forEach(m=>{
+    // Size group divider
+    if(m.sz!==lastSz){lastSz=m.sz;const r=sizeRanges[m.sz];
+      h+=`<tr class="qc-size-divider"><td colspan="15" style="color:${SC[m.sz]}">▎ ${m.sz} — ${r?r.count:0} models · ${r?r.wMin+'–'+r.wMax+'kg':''}</td></tr>`}
+
+    const wt=WT[m.id]||{w:'?',d:'?'};
+    const whr=m.hp?(m.wa/m.hp).toFixed(2):'—';
+    const bwD=(m.bu-m.wa).toFixed(1);
+    const hwD=(m.hp-m.wa).toFixed(1);
+    const whrN=parseFloat(whr);
+    const whrCls=whrN<0.75?'qc-ratio-good':whrN>0.90?'qc-ratio-warn':'';
+    const shape=whrN<0.72?'Hourglass':whrN<0.78?'Pear':whrN<0.85?'Average':whrN<0.92?'Straight':'Apple';
+
+    const issues=[];
+    if(m.wa>m.hp)issues.push('W>H');
+    if(m.bu<70)issues.push('Low bust');
+    if(m.wa>m.bu&&m.bd==='regular')issues.push('W>B');
+    const rowCls=issues.length?'qc-row-fail':'';
+
+    h+=`<tr class="${rowCls}">
+      <td class="qc-name" style="color:var(--tx)">${m.nm}</td>
+      <td style="color:var(--tx3)">#${m.id}</td>
+      <td><span style="color:${SC[m.sz]};font-weight:800;font-size:11px">${m.sz}</span></td>
+      <td style="color:var(--tx2)">${m.bd}</td>
+      <td><span style="color:var(--cy);font-weight:600">${wt.w}kg</span><span class="qc-meas-label">${wt.d}</span></td>
+      <td class="qc-meas">${m.h}</td>
+      <td class="qc-meas">${m.bu}</td>
+      <td class="qc-meas">${m.wa}</td>
+      <td class="qc-meas">${m.hp}</td>
+      <td style="color:var(--tx2)">${m.ins??'—'}</td>
+      <td><span class="qc-ratio ${whrCls}">${whr}</span></td>
+      <td style="color:${parseFloat(bwD)>0?'var(--gn)':'var(--rs)'}">${bwD>0?'+':''}${bwD}</td>
+      <td style="color:${parseFloat(hwD)>0?'var(--gn)':'var(--rs)'}">${hwD>0?'+':''}${hwD}</td>
+      <td style="color:var(--tx2);font-family:'Outfit',sans-serif;font-size:9px">${shape}</td>
+      <td class="${issues.length?'qc-fail':'qc-pass'}">${issues.length?issues.join(', '):'✓ Pass'}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  document.getElementById('qcTableSection').innerHTML=h;
+}();
 
 // ── LIVE GALLERY (Overview synced with uploaded images) ──
 function renderLiveGallery(){
