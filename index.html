@@ -226,6 +226,35 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .qca-check-label input[type=checkbox]{accent-color:var(--ac);width:15px;height:15px;cursor:pointer}
 .qca-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 @media(max-width:900px){.qca-comparison{grid-template-columns:1fr}}
+
+/* QCA Overlay System */
+.qca-overlay-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:16px;flex-wrap:wrap}
+.qca-ovl-btn{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid var(--bd);background:var(--sf2);color:var(--tx2);font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px}
+.qca-ovl-btn:hover{border-color:var(--tx3);color:var(--tx)}
+.qca-ovl-btn.active{border-color:var(--ac);background:var(--acd);color:var(--ac2)}
+.qca-ovl-btn.active-measure{border-color:var(--cy);background:rgba(6,182,212,.1);color:var(--cy)}
+.qca-ovl-icon{font-size:14px}
+.qca-pose-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.qca-pose-cell{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;position:relative}
+.qca-pose-cell .pose-label{font-size:10px;font-weight:700;color:var(--tx2);text-align:center;padding:6px 0;background:var(--sf2);border-top:1px solid var(--bd);font-family:'JetBrains Mono',monospace}
+.qca-pose-img-wrap{position:relative;aspect-ratio:3/4;background:var(--sf3);overflow:hidden}
+.qca-pose-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.qca-pose-img-wrap .ovl-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--tx3);font-size:11px;flex-direction:column;gap:6px}
+.qca-pose-img-wrap .ovl-empty span{font-size:28px;opacity:.2}
+/* Overlay layers */
+.ovl-silhouette,.ovl-measure{position:absolute;inset:0;pointer-events:none;transition:opacity .3s ease;z-index:2}
+.ovl-silhouette{opacity:0}
+.ovl-measure{opacity:0}
+.ovl-silhouette.visible{opacity:1}
+.ovl-measure.visible{opacity:1}
+/* Per-cell toggle buttons */
+.qca-cell-toggles{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:5}
+.qca-cell-toggle{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.5);backdrop-filter:blur(6px);color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.qca-cell-toggle:hover{background:rgba(0,0,0,.7);transform:scale(1.1)}
+.qca-cell-toggle.on{background:rgba(139,92,246,.7);border-color:var(--ac)}
+.qca-cell-toggle.on-m{background:rgba(6,182,212,.7);border-color:var(--cy)}
+.qca-ref-panel{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px}
+@media(max-width:768px){.qca-pose-grid{grid-template-columns:repeat(2,1fr)}}
 @keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .card,.tc{animation:fu .3s ease both}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
@@ -355,26 +384,39 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
   <div id="p-qcAdvanced" class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">🔍 Quality Control: AI Model Validation</h3>
-      <p style="color:var(--tx2);font-size:11px">Compare generated model against size reference specs · Saves to <code>qc_results</code></p></div>
+      <p style="color:var(--tx2);font-size:11px">Compare generated model against size reference specs · Overlay silhouette & measurement lines</p></div>
     </div>
     <div class="qca-controls">
       <label style="font-size:12px;font-weight:600;color:var(--tx2)">Select Model:</label>
       <select id="qcaModelSelect" onchange="loadQCAModel()" style="background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;margin-right:8px">
         <option value="">Choose a model...</option>
       </select>
+      <div id="qcaModelBadge" style="display:none"></div>
     </div>
+
     <div id="qcaMainContent" style="display:none">
-      <div class="qca-comparison">
-        <div class="qca-left">
-          <h4 style="font-size:13px;font-weight:700;color:var(--ac2);margin-bottom:10px">AI Generated Model</h4>
-          <img id="qcaModelImage" src="" alt="Model" style="width:100%;max-width:360px;border-radius:10px;border:1px solid var(--bd);background:var(--sf3)" onerror="this.style.display='none'"/>
-          <div id="qcaModelInfo" style="margin-top:10px"></div>
-        </div>
-        <div class="qca-right">
-          <h4 style="font-size:13px;font-weight:700;color:var(--ac2);margin-bottom:10px">Size Reference Specs</h4>
-          <div id="qcaReferenceSpecs"></div>
-        </div>
+      <!-- Global overlay toggle -->
+      <div class="qca-overlay-bar">
+        <span style="font-size:11px;color:var(--tx3);font-weight:600">OVERLAY CONTROLS:</span>
+        <button class="qca-ovl-btn" id="btnOvlSilhouette" onclick="toggleGlobalOverlay('silhouette')">
+          <span class="qca-ovl-icon">👁</span> Silhouette
+        </button>
+        <button class="qca-ovl-btn" id="btnOvlMeasure" onclick="toggleGlobalOverlay('measure')">
+          <span class="qca-ovl-icon">📏</span> Measurement Lines
+        </button>
+        <div style="margin-right:auto"></div>
+        <div id="qcaRefBadge" style="font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace"></div>
       </div>
+
+      <!-- 6-image grid with overlays -->
+      <div class="qca-pose-grid" id="qcaPoseGrid"></div>
+
+      <!-- Reference specs panel -->
+      <div class="qca-ref-panel" id="qcaRefPanel" style="margin-top:16px">
+        <div id="qcaReferenceSpecs"></div>
+      </div>
+
+      <!-- QC Checklist -->
       <div class="qca-checklist">
         <h4 style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:14px">QC Validation Checklist</h4>
         <div class="qca-section">
@@ -1228,26 +1270,13 @@ async function loadQCAModel() {
   if (!model) return;
 
   const wt = WT[modelId] || { w: '?', d: '?' };
+  const szColor = SC[model.sz] || 'var(--ac)';
 
-  // Show model image (from uploaded images if available)
-  const frontImg = dbImages[modelId+'_Front'] || dbImages[modelId+'_Close-Up'] || '';
-  const imgEl = document.getElementById('qcaModelImage');
-  if (frontImg) { imgEl.src = frontImg; imgEl.style.display = 'block'; }
-  else { imgEl.style.display = 'none'; }
+  // Show model badge
+  document.getElementById('qcaModelBadge').style.display = 'inline-flex';
+  document.getElementById('qcaModelBadge').innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;background:${szColor}18;border:1px solid ${szColor}40;font-size:12px;font-weight:700;color:${szColor}">${model.nm} #${model.id} · ${model.sz} · ${model.h}cm · ~${wt.w}kg</span>`;
 
-  document.getElementById('qcaModelInfo').innerHTML = `
-    <div style="margin-top:10px">
-      <div style="font-size:16px;font-weight:800;color:${model.cl}">${model.nm}</div>
-      <div style="font-size:11px;color:var(--tx2);margin-top:4px">
-        Size: <span style="color:${SC[model.sz]};font-weight:700">${model.sz}</span> · 
-        Height: ${model.h}cm · Weight: ~${wt.w}kg (${wt.d})
-      </div>
-      <div style="font-size:10px;color:var(--tx3);margin-top:4px;font-family:'JetBrains Mono',monospace">
-        B${model.bu} / W${model.wa} / H${model.hp}cm
-      </div>
-    </div>`;
-
-  // Load size guidelines for reference
+  // Load size guidelines
   let sizeGuide = null;
   if (sb) {
     try {
@@ -1256,29 +1285,88 @@ async function loadQCAModel() {
     } catch(e) {}
   }
 
+  // Build 6-pose grid with overlay containers
+  const grid = document.getElementById('qcaPoseGrid');
+  grid.innerHTML = allPoses.map(pose => {
+    const img = dbImages[modelId + '_' + pose] || '';
+    const poseKey = modelId + '_' + pose.replace(/ /g, '_');
+    const isCU = pose === 'Close-Up';
+    return `<div class="qca-pose-cell" id="qcaCell-${poseKey}">
+      <div class="qca-pose-img-wrap">
+        ${img
+          ? `<img src="${img}" alt="${pose}"/>`
+          : `<div class="ovl-empty"><span>📷</span>${pose}<br><span style="font-size:9px;opacity:.5">לא הועלתה</span></div>`
+        }
+        ${!isCU ? `<svg class="ovl-silhouette" id="ovlSil-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${buildSilhouetteSVG(model, pose)}
+        </svg>` : `<svg class="ovl-silhouette" id="ovlSil-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${buildFaceSilhouetteSVG(model)}
+        </svg>`}
+        <svg class="ovl-measure" id="ovlMeas-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${isCU ? '' : buildMeasurementSVG(model, sizeGuide)}
+        </svg>
+        ${img ? `<div class="qca-cell-toggles">
+          <button class="qca-cell-toggle" onclick="toggleCellOverlay(this,'ovlSil-${poseKey}','on')" title="Silhouette">👁</button>
+          <button class="qca-cell-toggle" onclick="toggleCellOverlay(this,'ovlMeas-${poseKey}','on-m')" title="Measurements">📏</button>
+        </div>` : ''}
+      </div>
+      <div class="pose-label">${pose}</div>
+    </div>`;
+  }).join('');
+
   // Build reference specs
   const sizeModels = MD.filter(m => m.sz === model.sz);
   const refHtml = `
-    <div style="font-size:14px;font-weight:800;color:${SC[model.sz]};margin-bottom:10px">${model.sz} Size Specifications</div>
-    <div style="font-size:11px;color:var(--tx2);line-height:2">
-      <div><span style="color:var(--tx3);min-width:80px;display:inline-block">Height:</span> <span style="color:var(--tx)">${Math.min(...sizeModels.map(m=>m.h))}–${Math.max(...sizeModels.map(m=>m.h))}cm</span></div>
-      <div><span style="color:var(--tx3);min-width:80px;display:inline-block">Weight:</span> <span style="color:var(--tx)">${Math.min(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))}–${Math.max(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))}kg</span></div>
-      <div><span style="color:var(--tx3);min-width:80px;display:inline-block">Bust:</span> <span style="color:var(--tx)">${Math.min(...sizeModels.map(m=>m.bu))}–${Math.max(...sizeModels.map(m=>m.bu))}cm</span></div>
-      <div><span style="color:var(--tx3);min-width:80px;display:inline-block">Waist:</span> <span style="color:var(--tx)">${Math.min(...sizeModels.map(m=>m.wa))}–${Math.max(...sizeModels.map(m=>m.wa))}cm</span></div>
-      <div><span style="color:var(--tx3);min-width:80px;display:inline-block">Hips:</span> <span style="color:var(--tx)">${Math.min(...sizeModels.map(m=>m.hp))}–${Math.max(...sizeModels.map(m=>m.hp))}cm</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:15px;font-weight:800;color:${szColor}">${model.sz} Size Specifications</div>
+      <div style="font-size:11px;color:var(--tx2)">for <strong style="color:${model.cl}">${model.nm}</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--ac2);margin-bottom:8px">📏 Measurements</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2;font-family:'JetBrains Mono',monospace">
+          <div>Height: <span style="color:var(--tx)">${model.h}cm</span> <span style="color:var(--tx3)">(range ${Math.min(...sizeModels.map(m=>m.h))}–${Math.max(...sizeModels.map(m=>m.h))})</span></div>
+          <div>Weight: <span style="color:var(--tx)">~${wt.w}kg</span></div>
+          <div>Bust: <span style="color:var(--tx)">${model.bu}cm</span></div>
+          <div>Waist: <span style="color:var(--tx)">${model.wa}cm</span></div>
+          <div>Hips: <span style="color:var(--tx)">${model.hp}cm</span></div>
+          <div>W/H: <span style="color:var(--tx)">${model.hp?(model.wa/model.hp).toFixed(2):'—'}</span></div>
+        </div>
+      </div>
       ${sizeGuide ? `
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
-          <div><span style="color:var(--tx3)">Muscle Def:</span> <span style="color:var(--tx)">${sizeGuide.muscle_definition_percent}%</span></div>
-          <div><span style="color:var(--tx3)">Body Fat:</span> <span style="color:var(--tx)">${sizeGuide.body_fat_percent_min}–${sizeGuide.body_fat_percent_max}%</span></div>
-          <div><span style="color:var(--tx3)">Face:</span> <span style="color:var(--tx)">${sizeGuide.facial_structure_description||'—'}</span></div>
-          <div><span style="color:var(--tx3)">Jawline:</span> <span style="color:var(--tx)">${sizeGuide.jawline_description||'—'}</span></div>
-          <div><span style="color:var(--tx3)">Composition:</span> <span style="color:var(--tx)">${sizeGuide.body_composition_summary||'—'}</span></div>
-        </div>` : ''}
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--cy);margin-bottom:8px">🏋️ Body Composition</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2">
+          <div>Muscle Def: <span style="color:var(--tx)">${sizeGuide.muscle_definition_percent}%</span></div>
+          <div>Body Fat: <span style="color:var(--tx)">${sizeGuide.body_fat_percent_min}–${sizeGuide.body_fat_percent_max}%</span></div>
+          <div>Shoulder: <span style="color:var(--tx)">${sizeGuide.shoulder_width_cm}cm</span></div>
+          <div>Skin: <span style="color:var(--tx)">${sizeGuide.skin_appearance||'—'}</span></div>
+        </div>
+      </div>
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--pk);margin-bottom:8px">😊 Facial Features</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2">
+          <div>Structure: <span style="color:var(--tx)">${sizeGuide.facial_structure_description||'—'}</span></div>
+          <div>Cheekbones: <span style="color:var(--tx)">${sizeGuide.cheekbone_description||'—'}</span></div>
+          <div>Jawline: <span style="color:var(--tx)">${sizeGuide.jawline_description||'—'}</span></div>
+          <div>Lips: <span style="color:var(--tx)">${sizeGuide.lips_description||'—'}</span></div>
+        </div>
+      </div>` : `
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px;grid-column:span 2">
+        <div style="font-size:10px;color:var(--tx3);font-style:italic">Connect <code>size_guidelines</code> Supabase table for facial & body composition details</div>
+      </div>`}
     </div>`;
   document.getElementById('qcaReferenceSpecs').innerHTML = refHtml;
+  document.getElementById('qcaRefBadge').textContent = `${model.nm} · ${model.sz} · B${model.bu}/W${model.wa}/H${model.hp}`;
 
   // Show main content
   document.getElementById('qcaMainContent').style.display = 'block';
+
+  // Reset overlay buttons
+  document.getElementById('btnOvlSilhouette').classList.remove('active');
+  document.getElementById('btnOvlMeasure').classList.remove('active-measure');
+  window._qcaOvlSil = false;
+  window._qcaOvlMeas = false;
 
   // Load existing QC results if any
   if (sb) {
@@ -1287,7 +1375,6 @@ async function loadQCAModel() {
       if (qcResults && qcResults.length > 0) {
         const result = qcResults[0];
         document.getElementById('qcaNotes').value = result.overall_notes || '';
-        // Restore checkbox states
         const fieldMap = {
           'facial_structure': 'facial_structure_pass', 'cheekbones': 'cheekbones_pass',
           'jawline': 'jawline_pass', 'lips': 'lips_pass', 'muscle_definition': 'muscle_definition_pass',
@@ -1298,16 +1385,167 @@ async function loadQCAModel() {
         };
         document.querySelectorAll('.qca-check').forEach(cb => {
           const dbField = fieldMap[cb.dataset.item];
-          if (dbField && result[dbField]) cb.checked = true;
-          else cb.checked = false;
+          cb.checked = dbField && result[dbField] ? true : false;
         });
       } else {
-        // Reset checkboxes
         document.querySelectorAll('.qca-check').forEach(cb => cb.checked = false);
         document.getElementById('qcaNotes').value = '';
       }
     } catch(e) { console.warn('Could not load QC results:', e); }
   }
+}
+
+// ── SVG OVERLAY BUILDERS ──
+
+function buildSilhouetteSVG(model, pose) {
+  const sc = 0.8; // scale factor for SVG units
+  const bust = model.bu * sc;
+  const waist = model.wa * sc;
+  const hips = model.hp * sc;
+  const cx = 150;
+  const headR = 18;
+  const neckY = 58;
+  const bustY = 110;
+  const waistY = 160;
+  const hipY = 210;
+  const kneeY = 300;
+  const footY = 380;
+
+  // Adjust proportions based on pose
+  let bR = bust / 5.2, wR = waist / 5.2, hR = hips / 5.2;
+
+  // For side/back views, reduce width
+  if (pose === 'Profile 90') { bR *= 0.45; wR *= 0.5; hR *= 0.5; }
+  if (pose === '45L' || pose === '45R') { bR *= 0.75; wR *= 0.78; hR *= 0.78; }
+  if (pose === 'Back') { bR *= 0.95; wR *= 0.95; hR *= 0.95; }
+
+  const color = SC[model.sz] || '#8b5cf6';
+
+  return `
+    <defs>
+      <linearGradient id="silG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".35"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity=".08"/>
+      </linearGradient>
+    </defs>
+    <!-- Head -->
+    <ellipse cx="${cx}" cy="${headR + 18}" rx="${headR}" ry="${headR + 2}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity=".6"/>
+    <!-- Neck -->
+    <line x1="${cx}" y1="${headR*2+20}" x2="${cx}" y2="${neckY}" stroke="${color}" stroke-width="1" stroke-opacity=".3"/>
+    <!-- Body outline -->
+    <path d="
+      M${cx},${neckY}
+      C${cx-2},${neckY+10} ${cx-bR-5},${bustY-10} ${cx-bR},${bustY}
+      Q${cx-bR+2},${bustY+15} ${cx-wR},${waistY}
+      Q${cx-wR-2},${waistY+15} ${cx-hR},${hipY}
+      L${cx-hR*0.7},${kneeY}
+      L${cx-hR*0.35},${footY}
+      L${cx+hR*0.35},${footY}
+      L${cx+hR*0.7},${kneeY}
+      L${cx+hR},${hipY}
+      Q${cx+wR+2},${waistY+15} ${cx+wR},${waistY}
+      Q${cx+bR-2},${bustY+15} ${cx+bR},${bustY}
+      C${cx+bR+5},${bustY-10} ${cx+2},${neckY+10} ${cx},${neckY}
+      Z"
+      fill="url(#silG)" stroke="${color}" stroke-width="1.5" stroke-opacity=".55"/>
+  `;
+}
+
+function buildFaceSilhouetteSVG(model) {
+  const color = SC[model.sz] || '#8b5cf6';
+  const cx = 150, cy = 170;
+  // Wider face for larger sizes
+  const szIdx = SO.indexOf(model.sz);
+  const faceW = 55 + szIdx * 6;
+  const faceH = 75 + szIdx * 3;
+  return `
+    <ellipse cx="${cx}" cy="${cy}" rx="${faceW}" ry="${faceH}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity=".5"/>
+    <!-- Eye line -->
+    <line x1="${cx-faceW*0.6}" y1="${cy-faceH*0.15}" x2="${cx+faceW*0.6}" y2="${cy-faceH*0.15}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,3" stroke-opacity=".4"/>
+    <!-- Nose -->
+    <line x1="${cx}" y1="${cy-faceH*0.15}" x2="${cx}" y2="${cy+faceH*0.1}" stroke="${color}" stroke-width="0.8" stroke-opacity=".3"/>
+    <!-- Mouth line -->
+    <line x1="${cx-faceW*0.3}" y1="${cy+faceH*0.3}" x2="${cx+faceW*0.3}" y2="${cy+faceH*0.3}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,3" stroke-opacity=".4"/>
+    <!-- Jawline markers -->
+    <line x1="${cx-faceW}" y1="${cy+faceH*0.2}" x2="${cx-faceW*0.8}" y2="${cy+faceH*0.2}" stroke="${color}" stroke-width="0.6" stroke-opacity=".3"/>
+    <line x1="${cx+faceW}" y1="${cy+faceH*0.2}" x2="${cx+faceW*0.8}" y2="${cy+faceH*0.2}" stroke="${color}" stroke-width="0.6" stroke-opacity=".3"/>
+    <text x="${cx}" y="${cy+faceH+20}" text-anchor="middle" fill="${color}" font-size="11" font-family="JetBrains Mono" font-weight="600" opacity=".6">Close-Up</text>
+  `;
+}
+
+function buildMeasurementSVG(model, sizeGuide) {
+  const cx = 150;
+  const bustY = 110, waistY = 160, hipY = 210;
+  const bust = model.bu, waist = model.wa, hips = model.hp;
+  const color = '#06b6d4'; // cyan for measurement lines
+
+  // Determine range text from sizeGuide or local data
+  const sizeModels = MD.filter(m => m.sz === model.sz);
+  const buRange = sizeGuide ? `${sizeGuide.bust_min}–${sizeGuide.bust_max}` : `${Math.min(...sizeModels.map(m=>m.bu))}–${Math.max(...sizeModels.map(m=>m.bu))}`;
+  const waRange = sizeGuide ? `${sizeGuide.waist_min}–${sizeGuide.waist_max}` : `${Math.min(...sizeModels.map(m=>m.wa))}–${Math.max(...sizeModels.map(m=>m.wa))}`;
+  const hpRange = sizeGuide ? `${sizeGuide.hip_min}–${sizeGuide.hip_max}` : `${Math.min(...sizeModels.map(m=>m.hp))}–${Math.max(...sizeModels.map(m=>m.hp))}`;
+  const htRange = sizeGuide ? `${sizeGuide.height_min}–${sizeGuide.height_max}` : `${Math.min(...sizeModels.map(m=>m.h))}–${Math.max(...sizeModels.map(m=>m.h))}`;
+  const wtRange = sizeGuide ? `${sizeGuide.weight_min}–${sizeGuide.weight_max}` : `${Math.min(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))}–${Math.max(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))}`;
+
+  return `
+    <!-- Bust line -->
+    <line x1="30" y1="${bustY}" x2="270" y2="${bustY}" stroke="${color}" stroke-width="1.2" stroke-dasharray="6,4" stroke-opacity=".7"/>
+    <rect x="205" y="${bustY-12}" width="90" height="16" rx="4" fill="rgba(6,182,212,.15)" stroke="${color}" stroke-width=".5"/>
+    <text x="250" y="${bustY+1}" text-anchor="middle" fill="${color}" font-size="9" font-family="JetBrains Mono" font-weight="700">B ${bust}cm</text>
+    <text x="28" y="${bustY+1}" text-anchor="end" fill="${color}" font-size="7" font-family="JetBrains Mono" opacity=".6">${buRange}</text>
+
+    <!-- Waist line -->
+    <line x1="30" y1="${waistY}" x2="270" y2="${waistY}" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="6,4" stroke-opacity=".7"/>
+    <rect x="205" y="${waistY-12}" width="90" height="16" rx="4" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width=".5"/>
+    <text x="250" y="${waistY+1}" text-anchor="middle" fill="#f59e0b" font-size="9" font-family="JetBrains Mono" font-weight="700">W ${waist}cm</text>
+    <text x="28" y="${waistY+1}" text-anchor="end" fill="#f59e0b" font-size="7" font-family="JetBrains Mono" opacity=".6">${waRange}</text>
+
+    <!-- Hip line -->
+    <line x1="30" y1="${hipY}" x2="270" y2="${hipY}" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="6,4" stroke-opacity=".7"/>
+    <rect x="205" y="${hipY-12}" width="90" height="16" rx="4" fill="rgba(244,63,94,.15)" stroke="#f43f5e" stroke-width=".5"/>
+    <text x="250" y="${hipY+1}" text-anchor="middle" fill="#f43f5e" font-size="9" font-family="JetBrains Mono" font-weight="700">H ${hips}cm</text>
+    <text x="28" y="${hipY+1}" text-anchor="end" fill="#f43f5e" font-size="7" font-family="JetBrains Mono" opacity=".6">${hpRange}</text>
+
+    <!-- Height indicator (left side) -->
+    <line x1="14" y1="20" x2="14" y2="385" stroke="${color}" stroke-width="1" stroke-opacity=".4"/>
+    <line x1="8" y1="20" x2="20" y2="20" stroke="${color}" stroke-width="1" stroke-opacity=".4"/>
+    <line x1="8" y1="385" x2="20" y2="385" stroke="${color}" stroke-width="1" stroke-opacity=".4"/>
+    <text x="14" y="12" text-anchor="middle" fill="${color}" font-size="8" font-family="JetBrains Mono" font-weight="700">${model.h}cm</text>
+    <text x="14" y="398" text-anchor="middle" fill="${color}" font-size="6" font-family="JetBrains Mono" opacity=".6">${htRange}</text>
+
+    <!-- Weight badge (top right) -->
+    <rect x="218" y="8" width="78" height="20" rx="6" fill="rgba(6,182,212,.12)" stroke="${color}" stroke-width=".5"/>
+    <text x="257" y="22" text-anchor="middle" fill="${color}" font-size="9" font-family="JetBrains Mono" font-weight="700">⚖️ ~${(WT[model.id]||{w:'?'}).w}kg</text>
+  `;
+}
+
+// ── OVERLAY TOGGLE FUNCTIONS ──
+
+function toggleGlobalOverlay(type) {
+  if (type === 'silhouette') {
+    window._qcaOvlSil = !window._qcaOvlSil;
+    document.getElementById('btnOvlSilhouette').classList.toggle('active', window._qcaOvlSil);
+    document.querySelectorAll('.ovl-silhouette').forEach(el => el.classList.toggle('visible', window._qcaOvlSil));
+    // Sync per-cell buttons
+    document.querySelectorAll('.qca-cell-toggle').forEach(btn => {
+      if (btn.title === 'Silhouette') btn.classList.toggle('on', window._qcaOvlSil);
+    });
+  } else {
+    window._qcaOvlMeas = !window._qcaOvlMeas;
+    document.getElementById('btnOvlMeasure').classList.toggle('active-measure', window._qcaOvlMeas);
+    document.querySelectorAll('.ovl-measure').forEach(el => el.classList.toggle('visible', window._qcaOvlMeas));
+    document.querySelectorAll('.qca-cell-toggle').forEach(btn => {
+      if (btn.title === 'Measurements') btn.classList.toggle('on-m', window._qcaOvlMeas);
+    });
+  }
+}
+
+function toggleCellOverlay(btn, svgId, activeClass) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const isVisible = svg.classList.contains('visible');
+  svg.classList.toggle('visible', !isVisible);
+  btn.classList.toggle(activeClass, !isVisible);
 }
 
 async function saveQCAResults(status) {
