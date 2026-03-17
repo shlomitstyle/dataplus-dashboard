@@ -258,7 +258,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .qca-cell-toggle.on{background:rgba(139,92,246,.7);border-color:var(--ac)}
 .qca-cell-toggle.on-m{background:rgba(6,182,212,.7);border-color:var(--cy)}
 .qca-ref-panel{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px}
-@media(max-width:1200px){.qca-checklist [style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:1200px){.qca-checklist [style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important}#srTechGrid{grid-template-columns:repeat(2,1fr)!important}}
 @media(max-width:768px){.qca-pose-grid{grid-template-columns:repeat(2,1fr)}.qca-checklist [style*="grid-template-columns:repeat(4"]{grid-template-columns:1fr!important}}
 
 /* ═══ AI STUDIO ═══ */
@@ -368,37 +368,80 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
   <!-- ═══ SIZE REFERENCE TAB ═══ -->
   <div id="p-sizeReference" class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">📊 Size Reference Guide</h3>
-      <p style="color:var(--tx2);font-size:11px">Body specs, measurements, composition & facial features per size — loaded from Supabase <code>size_guidelines</code></p></div>
+      <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">📊 Size Reference Guide — Technical Illustrations</h3>
+      <p style="color:var(--tx2);font-size:11px">Line drawings with exact measurements · Fitzpatrick skin classification · Size color mapping</p></div>
     </div>
+
+    <!-- All 8 sizes — technical line drawings -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" id="srTechGrid"></div>
+
+    <!-- Fitzpatrick Scale -->
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:14px">🎨 Fitzpatrick Skin Type Classification</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="srFitzpatrick">
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#FDEBD3"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type I</div>
+          <div style="font-size:9px;color:var(--tx2)">Very Fair</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns easily, never tans</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">very fair</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#F5D0A9"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type II</div>
+          <div style="font-size:9px;color:var(--tx2)">Fair</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns easily, tans minimally</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">fair</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#D4A76A"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type III</div>
+          <div style="font-size:9px;color:var(--tx2)">Medium</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns moderately, tans</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">olive, light brown</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#B8860B"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type IV</div>
+          <div style="font-size:9px;color:var(--tx2)">Olive</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns minimally, tans easily</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">olive</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#8B6914"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type V</div>
+          <div style="font-size:9px;color:var(--tx2)">Brown / Dark Brown</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Rarely burns, tans profusely</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">brown, dark brown</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#4A2C0A"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type VI</div>
+          <div style="font-size:9px;color:var(--tx2)">Deep Brown / Black</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Never burns, tans deeply</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">dark brown</div>
+        </div>
+      </div>
+      <!-- Model-skin mapping -->
+      <div style="margin-top:16px;font-size:10px;color:var(--tx3)">
+        <div style="font-weight:700;color:var(--tx2);margin-bottom:6px">Models per skin tone:</div>
+        <div id="srSkinMap" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- Data tables (sub-tabs) -->
     <div class="sr-subtabs">
-      <button class="sr-subtab active" onclick="switchSizeView('silhouettes',this)">👤 Silhouettes</button>
-      <button class="sr-subtab" onclick="switchSizeView('measurements',this)">📏 Measurements</button>
+      <button class="sr-subtab active" onclick="switchSizeView('measurements',this)">📏 Measurements</button>
       <button class="sr-subtab" onclick="switchSizeView('bodyComposition',this)">🏋️ Body Composition</button>
       <button class="sr-subtab" onclick="switchSizeView('facialFeatures',this)">😊 Facial Features</button>
     </div>
-    <div id="srView-silhouettes" class="sr-view active">
-      <div style="text-align:center;margin-bottom:16px">
-        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378099405/crQZnhQhmELVKz8h_l2PD" alt="Silhouettes Reference" style="max-width:100%;border-radius:12px;border:1px solid var(--bd)" onerror="this.style.display='none'"/>
-      </div>
-      <div id="srSpecs-silhouettes" class="sr-specs-table"></div>
-    </div>
-    <div id="srView-measurements" class="sr-view">
-      <div style="text-align:center;margin-bottom:16px">
-        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378099405/crQZnhQhmELVKz8h_l2PD" alt="Measurements Reference" style="max-width:100%;border-radius:12px;border:1px solid var(--bd)" onerror="this.style.display='none'"/>
-      </div>
+    <div id="srView-measurements" class="sr-view active">
       <div id="srSpecs-measurements" class="sr-specs-table"></div>
     </div>
     <div id="srView-bodyComposition" class="sr-view">
-      <div style="text-align:center;margin-bottom:16px">
-        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378099405/crQZnhQhmELVKz8h_l2PD" alt="Body Composition Reference" style="max-width:100%;border-radius:12px;border:1px solid var(--bd)" onerror="this.style.display='none'"/>
-      </div>
       <div id="srSpecs-bodyComposition" class="sr-specs-table"></div>
     </div>
     <div id="srView-facialFeatures" class="sr-view">
-      <div style="text-align:center;margin-bottom:16px">
-        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378099405/crQZnhQhmELVKz8h_l2PD" alt="Facial Features Reference" style="max-width:100%;border-radius:12px;border:1px solid var(--bd)" onerror="this.style.display='none'"/>
-      </div>
       <div id="srSpecs-facialFeatures" class="sr-specs-table"></div>
     </div>
   </div>
@@ -1518,7 +1561,159 @@ async function loadSizeSpecs(viewName) {
 }
 
 // Load initial silhouettes view
-document.addEventListener('DOMContentLoaded', () => { loadSizeSpecs('silhouettes'); });
+// Size reference specs for technical drawings
+const SR_SPECS = {
+  XS: {h:160,bu:82,wa:64,hp:90,wh:0.71},
+  S: {h:162,bu:86,wa:68,hp:90,wh:0.76},
+  M: {h:164,bu:88,wa:70,hp:96,wh:0.73},
+  L: {h:176,bu:92,wa:74,hp:100,wh:0.74},
+  XL: {h:178,bu:96,wa:76,hp:106,wh:0.72},
+  '2XL': {h:180,bu:100,wa:80,hp:116,wh:0.69},
+  '3XL': {h:188,bu:104,wa:94,hp:120,wh:0.78},
+  '4XL': {h:190,bu:106,wa:103,hp:126,wh:0.82}
+};
+
+function buildTechDrawingSVG(size) {
+  const sp = SR_SPECS[size];
+  const c = SC[size];
+  const cx = 110;
+  // Scale body width from measurements
+  const bR = sp.bu * 0.12;
+  const wR = sp.wa * 0.12;
+  const hR = sp.hp * 0.12;
+  const shR = bR + 1.5;
+  // Vertical landmarks
+  const headY=8, headH=16, chinY=headY+headH*2, neckY=chinY+5;
+  const shoulderY=neckY+8, bustY=shoulderY+22, waistY=bustY+24, hipY=waistY+22;
+  const crotchY=hipY+14, kneeY=crotchY+46, ankleY=kneeY+46, footY=ankleY+6;
+  const thR=hR*0.48, kR=hR*0.26, aR=hR*0.14;
+  // Height scale position
+  const hx = 14;
+
+  return `<svg viewBox="0 0 220 ${footY+30}" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-height:360px">
+    <!-- Grid background -->
+    <defs>
+      <pattern id="grid_${size}" width="10" height="10" patternUnits="userSpaceOnUse">
+        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#ffffff" stroke-width="0.15" opacity=".1"/>
+      </pattern>
+    </defs>
+    <rect width="220" height="${footY+30}" fill="url(#grid_${size})"/>
+
+    <!-- Height ruler (left) -->
+    <line x1="${hx}" y1="${headY}" x2="${hx}" y2="${footY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <line x1="${hx-5}" y1="${headY}" x2="${hx+5}" y2="${headY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <line x1="${hx-5}" y1="${footY}" x2="${hx+5}" y2="${footY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <path d="M${hx},${headY} L${hx-3},${headY+5} L${hx+3},${headY+5} Z" fill="${c}" opacity=".5"/>
+    <path d="M${hx},${footY} L${hx-3},${footY-5} L${hx+3},${footY-5} Z" fill="${c}" opacity=".5"/>
+    <text x="${hx}" y="${footY+16}" text-anchor="middle" fill="${c}" font-size="9" font-weight="800" font-family="JetBrains Mono">${sp.h}cm</text>
+    <text x="${hx}" y="${footY+24}" text-anchor="middle" fill="#888" font-size="6" font-family="JetBrains Mono">Height</text>
+
+    <!-- Head -->
+    <ellipse cx="${cx}" cy="${headY+headH}" rx="10" ry="${headH}" fill="none" stroke="#ccc" stroke-width="1.2"/>
+    <!-- Neck -->
+    <line x1="${cx-3}" y1="${chinY}" x2="${cx-4}" y2="${neckY}" stroke="#ccc" stroke-width="0.8"/>
+    <line x1="${cx+3}" y1="${chinY}" x2="${cx+4}" y2="${neckY}" stroke="#ccc" stroke-width="0.8"/>
+
+    <!-- Body outline -->
+    <path d="
+      M${cx-4},${neckY}
+      C${cx-shR*0.5},${neckY} ${cx-shR},${shoulderY-3} ${cx-shR},${shoulderY}
+      C${cx-shR},${shoulderY+6} ${cx-bR-1},${bustY-6} ${cx-bR},${bustY}
+      C${cx-bR+1},${bustY+8} ${cx-wR-1},${waistY-5} ${cx-wR},${waistY}
+      C${cx-wR-1},${waistY+6} ${cx-hR},${hipY-5} ${cx-hR},${hipY}
+      C${cx-hR},${hipY+5} ${cx-thR-1},${crotchY-3} ${cx-thR},${crotchY}
+      L${cx-kR},${kneeY} L${cx-aR},${ankleY} L${cx-aR-2},${footY}
+      M${cx+4},${neckY}
+      C${cx+shR*0.5},${neckY} ${cx+shR},${shoulderY-3} ${cx+shR},${shoulderY}
+      C${cx+shR},${shoulderY+6} ${cx+bR+1},${bustY-6} ${cx+bR},${bustY}
+      C${cx+bR-1},${bustY+8} ${cx+wR+1},${waistY-5} ${cx+wR},${waistY}
+      C${cx+wR+1},${waistY+6} ${cx+hR},${hipY-5} ${cx+hR},${hipY}
+      C${cx+hR},${hipY+5} ${cx+thR+1},${crotchY-3} ${cx+thR},${crotchY}
+      L${cx+kR},${kneeY} L${cx+aR},${ankleY} L${cx+aR+2},${footY}
+    " fill="none" stroke="#ccc" stroke-width="1.2" stroke-linecap="round"/>
+
+    <!-- Bust measurement arrow -->
+    <line x1="${cx+bR+4}" y1="${bustY}" x2="${cx+bR+30}" y2="${bustY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${bustY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.bu}cm</text>
+    <text x="${cx+bR+32}" y="${bustY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Bust</text>
+    <!-- Bust arrow tips -->
+    <line x1="${cx-bR}" y1="${bustY}" x2="${cx+bR}" y2="${bustY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-bR}" cy="${bustY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+bR}" cy="${bustY}" r="1.5" fill="${c}" opacity=".5"/>
+
+    <!-- Waist measurement arrow -->
+    <line x1="${cx+wR+4}" y1="${waistY}" x2="${cx+bR+30}" y2="${waistY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${waistY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.wa}cm</text>
+    <text x="${cx+bR+32}" y="${waistY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Waist</text>
+    <line x1="${cx-wR}" y1="${waistY}" x2="${cx+wR}" y2="${waistY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-wR}" cy="${waistY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+wR}" cy="${waistY}" r="1.5" fill="${c}" opacity=".5"/>
+
+    <!-- Hip measurement arrow -->
+    <line x1="${cx+hR+4}" y1="${hipY}" x2="${cx+bR+30}" y2="${hipY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${hipY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.hp}cm</text>
+    <text x="${cx+bR+32}" y="${hipY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Hips</text>
+    <line x1="${cx-hR}" y1="${hipY}" x2="${cx+hR}" y2="${hipY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-hR}" cy="${hipY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+hR}" cy="${hipY}" r="1.5" fill="${c}" opacity=".5"/>
+  </svg>`;
+}
+
+function renderSizeTechGrid() {
+  const grid = document.getElementById('srTechGrid');
+  if (!grid) return;
+
+  // Fitzpatrick mapping for skin tones in our data
+  const fitzMap = {
+    'very fair': {type:'I',hex:'#FDEBD3'},
+    'fair': {type:'II',hex:'#F5D0A9'},
+    'olive': {type:'III-IV',hex:'#D4A76A'},
+    'light brown': {type:'III',hex:'#C4944A'},
+    'brown': {type:'V',hex:'#8B6914'},
+    'dark brown': {type:'V-VI',hex:'#6B4A14'}
+  };
+
+  grid.innerHTML = SO.map(sz => {
+    const sp = SR_SPECS[sz];
+    const c = SC[sz];
+    const models = MD.filter(m => m.sz === sz);
+    // Get unique skin tones for this size
+    const skins = [...new Set(models.map(m => m.sk))];
+    const skinDots = skins.map(sk => {
+      const fitz = fitzMap[sk] || {type:'?',hex:'#888'};
+      return `<div style="display:inline-flex;align-items:center;gap:3px" title="${sk} (Fitzpatrick ${fitz.type})"><div style="width:12px;height:12px;border-radius:50%;background:${fitz.hex};border:1px solid rgba(255,255,255,.2)"></div><span style="font-size:7px;color:var(--tx3)">${sk}</span></div>`;
+    }).join('');
+
+    return `<div style="background:var(--sf);border:2px solid ${c}40;border-radius:12px;overflow:hidden">
+      <div style="background:${c};padding:6px 12px;text-align:center;font-size:14px;font-weight:900;color:#fff;letter-spacing:1px">${sz}</div>
+      <div style="padding:8px">
+        ${buildTechDrawingSVG(sz)}
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center">${skinDots}</div>
+        <div style="margin-top:6px;text-align:center;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">
+          W/H: ${sp.wh} · ${models.length} models
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Populate skin map
+  const skinMap = document.getElementById('srSkinMap');
+  if (skinMap) {
+    const skinGroups = {};
+    MD.forEach(m => { if (!skinGroups[m.sk]) skinGroups[m.sk] = []; skinGroups[m.sk].push(m); });
+    skinMap.innerHTML = Object.entries(skinGroups).map(([sk, ms]) => {
+      const fitz = fitzMap[sk] || {type:'?',hex:'#888'};
+      return `<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:var(--sf2);border-radius:4px;border:1px solid var(--bd)">
+        <div style="width:14px;height:14px;border-radius:50%;background:${fitz.hex};border:1px solid rgba(255,255,255,.15)"></div>
+        <span style="font-size:9px;color:var(--tx)">${sk}</span>
+        <span style="font-size:8px;color:var(--tx3)">(${ms.length})</span>
+        <span style="font-size:7px;color:var(--tx3)">Fitz ${fitz.type}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { renderSizeTechGrid(); loadSizeSpecs('measurements'); });
 
 // ═══════════════════════════════════════════════════
 // ═══ ADVANCED QC TAB — Model validation with checklist ═══
