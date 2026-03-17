@@ -1881,156 +1881,88 @@ async function loadQCAModel() {
 // ── SVG OVERLAY BUILDERS ──
 
 function buildSilhouetteSVG(model, pose) {
-  const color = SC[model.sz] || '#8b5cf6';
+  const color = SC[model.sz] || '#C44569';
   const cx = 150;
-  const uid = 's'+Math.random().toString(36).substr(2,5);
 
-  // Normalize measurements: map cm to SVG radius units
-  // Reference: XS bust ~80cm → radius ~13, 4XL bust ~140cm → radius ~22
-  const bR = model.bu * 0.155;   // bust half-width
-  const wR = model.wa * 0.155;   // waist half-width
-  const hR = model.hp * 0.155;   // hip half-width
-  const shR = Math.max(bR, wR) * 1.05 + 2; // shoulders
+  // Use same proportional scaling as Size Reference tech drawings
+  const bR = model.bu * 0.16;
+  const wR = model.wa * 0.16;
+  const hR = model.hp * 0.16;
+  const shR = bR + 2;
 
-  // Size index drives softness: XS=0 (lean), 4XL=7 (very soft)
-  const si = SO.indexOf(model.sz);
-  const soft = si * 0.8; // softness factor
+  // Pose width factor
+  let pf = 1;
+  if (pose === 'Profile 90') pf = 0.42;
+  else if (pose === '45L' || pose === '45R') pf = 0.72;
+  else if (pose === 'Back') pf = 0.97;
 
-  // Vertical anatomy — 7.5 head proportion
-  const topY = 10;
-  const headH = 24;
-  const headCY = topY + headH;
-  const chinY = headCY + headH;
+  // Apply pose scaling
+  const B = bR * pf, W = wR * pf, H = hR * pf, S = shR * pf;
+  const thR = H * 0.48, kR = H * 0.27, aR = H * 0.15;
+
+  // Vertical positions — fit full body in 400 viewBox (head at ~20, feet at ~385)
+  const headY = 20, headH = 20;
+  const chinY = headY + headH * 2;
   const neckY = chinY + 6;
   const shoulderY = neckY + 10;
-  const armPitY = shoulderY + 14;
-  const bustPeakY = armPitY + 10 + soft;
-  const underbustY = bustPeakY + 10 + soft * 0.5;
-  const waistY = underbustY + 18 - soft * 0.5;
-  const navelY = waistY + 8;
-  const hipStartY = navelY + 6;
-  const hipPeakY = hipStartY + 16 + soft;
-  const crotchY = hipPeakY + 14 + soft * 0.5;
-  const upperThighY = crotchY + 10;
-  const midThighY = upperThighY + 28;
-  const kneeY = midThighY + 24;
-  const calfY = kneeY + 28;
-  const ankleY = calfY + 24;
-  const footY = ankleY + 10;
-
-  // Derived widths
-  const nW = 5 + soft * 0.3;
-  const ubR = wR + (bR - wR) * 0.4;
-  const htR = wR + (hR - wR) * 0.35;
-  const thR = hR * (0.50 + soft * 0.02);
-  const utR = thR * 0.95;
-  const mtR = thR * 0.78;
-  const kR = thR * 0.48;
-  const cR = thR * 0.44;
-  const aR = thR * 0.26;
-
-  // Bust prominence (breasts)
-  const bustOut = bR + 1.5 + soft * 0.6;
-  const bustCurve = 4 + soft * 0.8;
-
-  // Pose scale
-  let xs = 1;
-  if (pose === 'Profile 90') xs = 0.40;
-  else if (pose === '45L' || pose === '45R') xs = 0.70;
-  else if (pose === 'Back') xs = 0.98;
-  const X = (v) => cx + v * xs;
-  const Xn = (v) => cx - v * xs;
-
-  // Arm positions
-  const armW = 3.5 + soft * 0.5;
-  const armOutSh = shR + armW;
-  const armOutElbow = shR * 0.55 + armW;
-  const armOutWrist = wR * 0.6 + armW * 0.7;
+  const bustY = shoulderY + 28;
+  const waistY = bustY + 30;
+  const hipY = waistY + 28;
+  const crotchY = hipY + 18;
+  const kneeY = crotchY + 56;
+  const ankleY = kneeY + 56;
+  const footY = ankleY + 8;
 
   return `
-    <defs>
-      <linearGradient id="sg_${uid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity=".22"/>
-        <stop offset="50%" stop-color="${color}" stop-opacity=".10"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity=".03"/>
-      </linearGradient>
-      <radialGradient id="sk_${uid}" cx="50%" cy="30%" r="60%">
-        <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity=".03"/>
-      </radialGradient>
-      <filter id="gl_${uid}"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    </defs>
-
-    <!-- Head (oval) -->
-    <ellipse cx="${cx}" cy="${headCY}" rx="${xs*12}" ry="${headH}" fill="url(#sk_${uid})" stroke="${color}" stroke-width="1.1" stroke-opacity=".4" filter="url(#gl_${uid})"/>
-    <!-- Hair -->
-    <path d="M${Xn(11)},${headCY-4} C${Xn(14)},${topY-6} ${X(14)},${topY-6} ${X(11)},${headCY-4}" fill="none" stroke="${color}" stroke-width="0.8" stroke-opacity=".2"/>
-    <path d="M${Xn(12)},${headCY+2} C${Xn(16)},${headCY-14} ${Xn(14)},${topY} ${Xn(8)},${topY-2}" fill="none" stroke="${color}" stroke-width="0.6" stroke-opacity=".15"/>
-    <path d="M${X(12)},${headCY+2} C${X(16)},${headCY-14} ${X(14)},${topY} ${X(8)},${topY-2}" fill="none" stroke="${color}" stroke-width="0.6" stroke-opacity=".15"/>
-
+    <!-- Head -->
+    <ellipse cx="${cx}" cy="${headY+headH}" rx="${12*pf}" ry="${headH}" fill="none" stroke="${color}" stroke-width="1.5" opacity=".6"/>
     <!-- Neck -->
-    <path d="M${Xn(nW)},${chinY} C${Xn(nW)},${chinY+3} ${Xn(nW+0.5)},${neckY-2} ${Xn(nW+1)},${neckY}" fill="none" stroke="${color}" stroke-width="0.9" stroke-opacity=".3"/>
-    <path d="M${X(nW)},${chinY} C${X(nW)},${chinY+3} ${X(nW+0.5)},${neckY-2} ${X(nW+1)},${neckY}" fill="none" stroke="${color}" stroke-width="0.9" stroke-opacity=".3"/>
+    <line x1="${cx-4*pf}" y1="${chinY}" x2="${cx-5*pf}" y2="${neckY}" stroke="${color}" stroke-width="1" opacity=".4"/>
+    <line x1="${cx+4*pf}" y1="${chinY}" x2="${cx+5*pf}" y2="${neckY}" stroke="${color}" stroke-width="1" opacity=".4"/>
 
-    <!-- BODY — Left side (from neck down) -->
+    <!-- Body — Left contour -->
     <path d="
-      M${Xn(nW+1)},${neckY}
-      C${Xn(shR*0.5)},${neckY} ${Xn(shR)},${shoulderY-4} ${Xn(shR)},${shoulderY}
-      C${Xn(shR)},${shoulderY+5} ${Xn(shR-1)},${armPitY-4} ${Xn(bustOut)},${bustPeakY-bustCurve}
-      C${Xn(bustOut+1)},${bustPeakY-bustCurve*0.3} ${Xn(bustOut+0.5)},${bustPeakY} ${Xn(bustOut)},${bustPeakY+bustCurve*0.5}
-      C${Xn(bustOut-1.5)},${bustPeakY+bustCurve+2} ${Xn(ubR+1)},${underbustY-3} ${Xn(ubR)},${underbustY}
-      C${Xn(ubR-0.5)},${underbustY+4} ${Xn(wR+0.5)},${waistY-5} ${Xn(wR)},${waistY}
-      C${Xn(wR-0.3)},${waistY+4} ${Xn(wR+0.5)},${navelY} ${Xn(htR)},${hipStartY}
-      C${Xn(htR+1)},${hipStartY+4} ${Xn(hR+0.5)},${hipPeakY-5} ${Xn(hR)},${hipPeakY}
-      C${Xn(hR-0.5)},${hipPeakY+5} ${Xn(utR+1)},${crotchY-5} ${Xn(utR)},${crotchY}
-      C${Xn(utR-0.5)},${crotchY+3} ${Xn(thR)},${upperThighY} ${Xn(thR)},${upperThighY}
-      C${Xn(thR)},${upperThighY+6} ${Xn(mtR+1)},${midThighY-5} ${Xn(mtR)},${midThighY}
-      C${Xn(mtR-0.5)},${midThighY+6} ${Xn(kR+1.5)},${kneeY-6} ${Xn(kR)},${kneeY}
-      C${Xn(kR-0.5)},${kneeY+5} ${Xn(cR+1)},${calfY-8} ${Xn(cR)},${calfY}
-      C${Xn(cR-0.5)},${calfY+6} ${Xn(aR+1)},${ankleY-4} ${Xn(aR)},${ankleY}
-      L${Xn(aR+2)},${footY}
-    " fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity=".45" stroke-linecap="round" filter="url(#gl_${uid})"/>
+      M${cx-5*pf},${neckY}
+      C${cx-S*0.5},${neckY} ${cx-S},${shoulderY-3} ${cx-S},${shoulderY}
+      C${cx-S},${shoulderY+8} ${cx-B-1},${bustY-8} ${cx-B},${bustY}
+      C${cx-B+1},${bustY+10} ${cx-W-1},${waistY-6} ${cx-W},${waistY}
+      C${cx-W-1},${waistY+8} ${cx-H},${hipY-6} ${cx-H},${hipY}
+      C${cx-H},${hipY+6} ${cx-thR-1},${crotchY-4} ${cx-thR},${crotchY}
+      L${cx-kR},${kneeY}
+      L${cx-aR},${ankleY}
+      L${cx-aR-3},${footY}
+    " fill="none" stroke="${color}" stroke-width="1.5" opacity=".55" stroke-linecap="round"/>
 
-    <!-- BODY — Right side (mirror) -->
+    <!-- Body — Right contour -->
     <path d="
-      M${X(nW+1)},${neckY}
-      C${X(shR*0.5)},${neckY} ${X(shR)},${shoulderY-4} ${X(shR)},${shoulderY}
-      C${X(shR)},${shoulderY+5} ${X(shR-1)},${armPitY-4} ${X(bustOut)},${bustPeakY-bustCurve}
-      C${X(bustOut+1)},${bustPeakY-bustCurve*0.3} ${X(bustOut+0.5)},${bustPeakY} ${X(bustOut)},${bustPeakY+bustCurve*0.5}
-      C${X(bustOut-1.5)},${bustPeakY+bustCurve+2} ${X(ubR+1)},${underbustY-3} ${X(ubR)},${underbustY}
-      C${X(ubR-0.5)},${underbustY+4} ${X(wR+0.5)},${waistY-5} ${X(wR)},${waistY}
-      C${X(wR-0.3)},${waistY+4} ${X(wR+0.5)},${navelY} ${X(htR)},${hipStartY}
-      C${X(htR+1)},${hipStartY+4} ${X(hR+0.5)},${hipPeakY-5} ${X(hR)},${hipPeakY}
-      C${X(hR-0.5)},${hipPeakY+5} ${X(utR+1)},${crotchY-5} ${X(utR)},${crotchY}
-      C${X(utR-0.5)},${crotchY+3} ${X(thR)},${upperThighY} ${X(thR)},${upperThighY}
-      C${X(thR)},${upperThighY+6} ${X(mtR+1)},${midThighY-5} ${X(mtR)},${midThighY}
-      C${X(mtR-0.5)},${midThighY+6} ${X(kR+1.5)},${kneeY-6} ${X(kR)},${kneeY}
-      C${X(kR-0.5)},${kneeY+5} ${X(cR+1)},${calfY-8} ${X(cR)},${calfY}
-      C${X(cR-0.5)},${calfY+6} ${X(aR+1)},${ankleY-4} ${X(aR)},${ankleY}
-      L${X(aR+2)},${footY}
-    " fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity=".45" stroke-linecap="round" filter="url(#gl_${uid})"/>
+      M${cx+5*pf},${neckY}
+      C${cx+S*0.5},${neckY} ${cx+S},${shoulderY-3} ${cx+S},${shoulderY}
+      C${cx+S},${shoulderY+8} ${cx+B+1},${bustY-8} ${cx+B},${bustY}
+      C${cx+B-1},${bustY+10} ${cx+W+1},${waistY-6} ${cx+W},${waistY}
+      C${cx+W+1},${waistY+8} ${cx+H},${hipY-6} ${cx+H},${hipY}
+      C${cx+H},${hipY+6} ${cx+thR+1},${crotchY-4} ${cx+thR},${crotchY}
+      L${cx+kR},${kneeY}
+      L${cx+aR},${ankleY}
+      L${cx+aR+3},${footY}
+    " fill="none" stroke="${color}" stroke-width="1.5" opacity=".55" stroke-linecap="round"/>
 
-    <!-- Fill body shape (closed path, feet connected) -->
-    <path d="
-      M${Xn(aR+2)},${footY} L${Xn(aR)},${ankleY}
-      C${Xn(aR+1)},${ankleY-4} ${Xn(cR-0.5)},${calfY+6} ${Xn(cR)},${calfY}
-      C${Xn(cR+1)},${calfY-8} ${Xn(kR-0.5)},${kneeY+5} ${Xn(kR)},${kneeY}
-      C${Xn(kR+1.5)},${kneeY-6} ${Xn(mtR-0.5)},${midThighY+6} ${Xn(mtR)},${midThighY}
-      C${Xn(mtR+1)},${midThighY-5} ${Xn(thR)},${upperThighY+6} ${Xn(thR)},${upperThighY}
-      L${Xn(utR)},${crotchY}
-      L${cx},${crotchY+4}
-      L${X(utR)},${crotchY}
-      C${X(utR-0.5)},${crotchY+3} ${X(thR)},${upperThighY} ${X(thR)},${upperThighY}
-      C${X(thR)},${upperThighY+6} ${X(mtR+1)},${midThighY-5} ${X(mtR)},${midThighY}
-      C${X(mtR-0.5)},${midThighY+6} ${X(kR+1.5)},${kneeY-6} ${X(kR)},${kneeY}
-      C${X(kR-0.5)},${kneeY+5} ${X(cR+1)},${calfY-8} ${X(cR)},${calfY}
-      C${X(cR-0.5)},${calfY+6} ${X(aR+1)},${ankleY-4} ${X(aR)},${ankleY}
-      L${X(aR+2)},${footY} Z
-    " fill="url(#sg_${uid})" stroke="none" opacity=".6"/>
+    <!-- Bust line -->
+    <line x1="${cx-B}" y1="${bustY}" x2="${cx+B}" y2="${bustY}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,3" opacity=".35"/>
+    <circle cx="${cx-B}" cy="${bustY}" r="2" fill="${color}" opacity=".4"/>
+    <circle cx="${cx+B}" cy="${bustY}" r="2" fill="${color}" opacity=".4"/>
 
-    <!-- Arms (simple lines) -->
-    <path d="M${Xn(shR)},${shoulderY} C${Xn(armOutSh)},${shoulderY+6} ${Xn(armOutElbow)},${waistY-10} ${Xn(armOutElbow)},${waistY} C${Xn(armOutElbow-1)},${waistY+12} ${Xn(armOutWrist)},${hipPeakY-8} ${Xn(armOutWrist)},${hipPeakY}" fill="none" stroke="${color}" stroke-width="0.8" stroke-opacity=".25"/>
-    <path d="M${X(shR)},${shoulderY} C${X(armOutSh)},${shoulderY+6} ${X(armOutElbow)},${waistY-10} ${X(armOutElbow)},${waistY} C${X(armOutElbow-1)},${waistY+12} ${X(armOutWrist)},${hipPeakY-8} ${X(armOutWrist)},${hipPeakY}" fill="none" stroke="${color}" stroke-width="0.8" stroke-opacity=".25"/>
+    <!-- Waist line -->
+    <line x1="${cx-W}" y1="${waistY}" x2="${cx+W}" y2="${waistY}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,3" opacity=".35"/>
+    <circle cx="${cx-W}" cy="${waistY}" r="2" fill="${color}" opacity=".4"/>
+    <circle cx="${cx+W}" cy="${waistY}" r="2" fill="${color}" opacity=".4"/>
+
+    <!-- Hip line -->
+    <line x1="${cx-H}" y1="${hipY}" x2="${cx+H}" y2="${hipY}" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,3" opacity=".35"/>
+    <circle cx="${cx-H}" cy="${hipY}" r="2" fill="${color}" opacity=".4"/>
+    <circle cx="${cx+H}" cy="${hipY}" r="2" fill="${color}" opacity=".4"/>
+
+    <!-- Leg separation -->
+    <line x1="${cx}" y1="${crotchY}" x2="${cx}" y2="${footY}" stroke="${color}" stroke-width="0.5" opacity=".15" stroke-dasharray="3,4"/>
   `;
 }
 
@@ -2094,7 +2026,7 @@ function buildFaceSilhouetteSVG(model) {
 function buildMeasurementSVG(model, sizeGuide) {
   const cx = 150;
   // Match the new anatomical positions from buildSilhouetteSVG
-  const bustY = 118, waistY = 170, hipY = 208;
+  const bustY = 128, waistY = 158, hipY = 186;
   const bust = model.bu, waist = model.wa, hips = model.hp;
   const color = '#06b6d4';
 
