@@ -1,0 +1,2566 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataPlus — Model Dashboard (Real-Time)</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#060609;--sf:#0e0e14;--sf2:#15151e;--sf3:#1c1c28;--bd:#252535;--tx:#e4e4f0;--tx2:#8888a8;--tx3:#555578;--ac:#8b5cf6;--ac2:#a78bfa;--acd:rgba(139,92,246,.10);--gn:#10b981;--gnd:rgba(16,185,129,.12);--am:#f59e0b;--rs:#f43f5e;--rsd:rgba(244,63,94,.10);--cy:#06b6d4;--pk:#ec4899;--or:#f97316;--size-xs:#FF6B9D;--size-s:#C44569;--size-m:#A0522D;--size-l:#D4A574;--size-xl:#E8B4A8;--size-2xl:#F0C8B8;--size-3xl:#F5D5C8;--size-4xl:#FCDDC1}
+/* Size utility classes */
+.border-size-xs{border-color:var(--size-xs)}.border-size-s{border-color:var(--size-s)}.border-size-m{border-color:var(--size-m)}.border-size-l{border-color:var(--size-l)}.border-size-xl{border-color:var(--size-xl)}.border-size-2xl{border-color:var(--size-2xl)}.border-size-3xl{border-color:var(--size-3xl)}.border-size-4xl{border-color:var(--size-4xl)}
+.bg-size-xs{background-color:rgba(255,107,157,.1)}.bg-size-s{background-color:rgba(196,69,105,.1)}.bg-size-m{background-color:rgba(160,82,45,.1)}.bg-size-l{background-color:rgba(212,165,116,.1)}.bg-size-xl{background-color:rgba(232,180,168,.1)}.bg-size-2xl{background-color:rgba(240,200,184,.1)}.bg-size-3xl{background-color:rgba(245,213,200,.1)}.bg-size-4xl{background-color:rgba(252,221,193,.1)}
+.text-size-xs{color:var(--size-xs)}.text-size-s{color:var(--size-s)}.text-size-m{color:var(--size-m)}.text-size-l{color:var(--size-l)}.text-size-xl{color:var(--size-xl)}.text-size-2xl{color:var(--size-2xl)}.text-size-3xl{color:var(--size-3xl)}.text-size-4xl{color:var(--size-4xl)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.025;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:100px}
+.ctr{max-width:1540px;margin:0 auto;padding:14px 20px;position:relative;z-index:1}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 0 20px;border-bottom:1px solid var(--bd);margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:22px;font-weight:800;letter-spacing:-.5px}.hdr h1 span{color:var(--ac)}
+.hdr .sub{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.badge{background:var(--acd);border:1px solid rgba(139,92,246,.25);color:var(--ac2);padding:3px 10px;border-radius:18px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gn);margin-left:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* User picker */
+.user-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;flex-wrap:wrap}
+.user-bar label{font-size:12px;font-weight:600;color:var(--tx2)}
+.user-bar select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer}
+.user-bar .sync-status{font-size:10px;font-family:'JetBrains Mono',monospace;margin-right:auto;display:flex;align-items:center;gap:4px}
+
+.tabs{display:flex;gap:2px;background:var(--sf);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content;flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;color:var(--tx2);transition:all .2s;border:none;background:none;font-family:inherit}
+.tab:hover{color:var(--tx)}.tab.active{background:var(--ac);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.btn{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.btn-ac{background:var(--ac);color:#fff}.btn-ac:hover{background:var(--ac2)}
+.btn-ghost{background:var(--sf3);color:var(--tx2);border:1px solid var(--bd)}.btn-ghost:hover{color:var(--tx);border-color:var(--tx3)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--ac);box-shadow:0 4px 20px rgba(139,92,246,.05)}
+.card.selected{border-color:var(--ac);background:var(--sf2)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;cursor:pointer}
+.card-name{font-size:17px;font-weight:700}.card-id{font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.sz{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.trait-badge{display:inline-block;margin:3px 0 6px;padding:2px 9px;border-radius:14px;font-size:9px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar{height:3px;border-radius:2px;background:var(--sf3);margin:3px 0 6px;overflow:hidden}
+.cbar-f{height:100%;border-radius:2px;transition:width .5s}
+.clbl{font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.attrs{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.attr{background:var(--sf3);padding:2px 6px;border-radius:3px;font-size:9px;color:var(--tx2)}
+.meas{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:8px}
+.meas div{text-align:center}.mv{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}.ml{font-size:7px;color:var(--tx3);margin-top:1px}
+
+.card-assign{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.card-assign select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:4px 6px;border-radius:5px;font-size:10px;font-family:'Outfit',sans-serif;cursor:pointer}
+.card-assign label{font-size:9px;color:var(--tx3)}
+.chk-group{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--tx2)}
+.chk-group input[type=checkbox]{accent-color:var(--ac);width:13px;height:13px;cursor:pointer}
+.chk-group.done{color:var(--gn);font-weight:600}
+
+.img-area{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.img-slot{aspect-ratio:3/4;border:1px dashed var(--bd);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--tx3);cursor:pointer;overflow:hidden;position:relative;transition:border-color .2s;background:var(--sf2)}
+.img-slot:hover{border-color:var(--ac)}
+.img-slot img{width:100%;height:100%;object-fit:cover;border-radius:5px}
+.img-slot .slot-label{text-align:center;line-height:1.3;pointer-events:none}
+.img-slot input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.img-slot.has-img{border-style:solid;border-color:var(--gn)}
+.img-slot .remove-img{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:none;align-items:center;justify-content:center}
+.img-slot:hover .remove-img{display:flex}
+.img-slot .uploading{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;border-radius:5px}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+.fg{display:flex;flex-direction:column;gap:2px}
+.fg label{font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.fg select{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;min-width:95px;font-family:'Outfit',sans-serif}
+
+/* Compare */
+.chdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.ccnt{font-size:10px;color:var(--tx2);font-family:'JetBrains Mono',monospace}
+.cv{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.cc h3{font-size:16px;margin-bottom:2px}
+.cc .cn{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);margin-bottom:10px}
+.dr{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd)}.dr:last-child{border-bottom:none}
+.dl{font-size:10px;color:var(--tx2);width:70px;flex-shrink:0}
+.dv{font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 6px;border-radius:4px}
+.ds{background:var(--gnd);color:var(--gn)}.dd{background:var(--rsd);color:var(--rs)}
+.dbw{flex:1;margin:0 8px;height:4px;background:var(--sf3);border-radius:2px;overflow:hidden;position:relative}
+.dba,.dbb{position:absolute;top:0;height:100%;border-radius:2px}
+.sil-wrap{display:flex;justify-content:center;gap:36px;margin:20px 0;align-items:flex-end}
+.sil{text-align:center}.sil-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx2);margin-top:3px}
+
+/* Prompts */
+.psec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:10px}
+.psec h3{font-size:13px;margin-bottom:2px;color:var(--ac2)}
+.psec .psub{font-size:10px;color:var(--tx3);margin-bottom:8px}
+.pbox{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;color:var(--tx);position:relative;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word;margin-bottom:6px}
+.cpb{position:absolute;top:5px;right:5px;background:var(--sf3);border:1px solid var(--bd);color:var(--tx2);padding:3px 8px;border-radius:4px;font-size:8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .15s;z-index:2}
+.cpb:hover{background:var(--ac);color:#fff;border-color:var(--ac)}
+.pose-tabs{display:flex;gap:2px;margin-bottom:8px;flex-wrap:wrap}
+.pose-tab{padding:4px 10px;border-radius:4px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--sf2);color:var(--tx2);font-family:'JetBrains Mono',monospace;transition:all .15s}
+.pose-tab:hover{color:var(--tx)}.pose-tab.active{background:var(--ac);color:#fff;border-color:var(--ac)}
+
+/* Charts */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.cb{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px}
+.cb h4{font-size:11px;color:var(--tx2);margin-bottom:10px}
+.ss{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sc{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center}
+.scv{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ac2)}
+.scl{font-size:8px;color:var(--tx3);margin-top:2px}
+
+/* QC — Premium Design */
+.qc-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--bd);margin-bottom:16px;background:var(--sf)}
+.qc-wrap table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:center}
+.qc-wrap th{background:linear-gradient(180deg,var(--sf2),var(--sf));padding:10px 10px;font-weight:700;color:var(--ac2);font-size:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--ac)}
+.qc-wrap td{padding:8px 10px;border-top:1px solid rgba(37,37,53,.6);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px;transition:background .15s}
+.qc-wrap tr:hover td{background:rgba(139,92,246,.04)}
+.qc-wrap tr.qc-row-done{background:rgba(16,185,129,.03)}
+.qc-wrap tr.qc-row-fail td{background:rgba(244,63,94,.03)}
+.qc-pass{color:var(--gn);font-weight:700}.qc-fail{color:var(--rs);font-weight:700}
+.qc-name{font-family:'Outfit',sans-serif;font-weight:700;text-align:left;padding-left:14px;font-size:11px}
+.qc-meas{font-weight:600;color:var(--tx)}
+.qc-meas-label{font-size:7px;color:var(--tx3);display:block;margin-top:1px}
+.qc-ratio{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600}
+.qc-ratio-good{background:var(--gnd);color:var(--gn)}
+.qc-ratio-warn{background:rgba(245,158,11,.12);color:var(--am)}
+.qc-ratio-bad{background:var(--rsd);color:var(--rs)}
+.qc-size-divider td{background:var(--sf2)!important;padding:6px 14px!important;text-align:left!important;font-family:'Outfit',sans-serif!important;font-weight:700!important;font-size:11px!important;color:var(--ac2)!important;letter-spacing:.5px;border-top:2px solid var(--bd)!important}
+
+.size-ref{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-bottom:16px}
+.size-ref h4{font-size:14px;font-weight:800;margin-bottom:14px;color:var(--ac2)}
+.sr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sr-card{background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:12px;text-align:center;transition:all .2s;position:relative;overflow:hidden}
+.sr-card:hover{border-color:var(--ac);transform:translateY(-1px)}
+.sr-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.sr-sz{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;margin-bottom:6px}
+.sr-range{font-size:9px;color:var(--tx2);line-height:1.6}
+.sr-weight{font-size:10px;color:var(--tx);font-weight:600;margin-top:4px;padding-top:4px;border-top:1px solid var(--bd)}
+
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--bd)}
+.tw table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:left}
+.tw th{background:var(--sf2);padding:7px 8px;font-weight:600;color:var(--tx2);font-size:8px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap}
+.tw td{padding:6px 8px;border-top:1px solid var(--bd);white-space:nowrap}
+.tw tr:hover td{background:var(--sf)}
+
+.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px;margin-top:14px}
+.tc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start}
+.ta{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;color:#fff}
+.ti h4{font-size:13px;font-weight:700;margin-bottom:1px}
+.ti .tid{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx3);margin-bottom:3px}
+.ti .td{font-size:10px;color:var(--tx2);line-height:1.4}
+.ti .tt{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.ti .ttg{font-size:8px;padding:2px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace}
+
+.progress-bar{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pb-track{flex:1;min-width:180px;height:8px;background:var(--sf3);border-radius:4px;overflow:hidden}
+.pb-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),var(--gn));transition:width .4s}
+.pb-label{font-size:12px;font-weight:600;color:var(--tx2);white-space:nowrap}
+.pb-stat{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx3)}
+
+/* Image overlay feedback buttons */
+.img-overlay{position:absolute;top:0;left:0;right:0;display:flex;gap:3px;padding:4px;opacity:0;transition:opacity .2s;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);border-radius:5px 5px 0 0}
+.img-slot:hover .img-overlay{opacity:1}
+.io-btn{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);transition:all .15s}
+.io-btn:hover{transform:scale(1.15);background:rgba(0,0,0,.7)}
+.io-active-ok{background:var(--gn)!important;border-color:var(--gn)!important;box-shadow:0 0 8px rgba(16,185,129,.5)}
+.io-active-no{background:var(--rs)!important;border-color:var(--rs)!important;box-shadow:0 0 8px rgba(244,63,94,.5)}
+.io-replace{cursor:pointer}
+.io-replace input{position:absolute;width:1px;height:1px;overflow:hidden}
+.io-del:hover{background:var(--rs)!important;border-color:var(--rs)!important}
+
+/* Slot border colors for feedback status */
+.fb-slot-ok{border:2px solid var(--gn)!important;box-shadow:0 0 6px rgba(16,185,129,.15)}
+.fb-slot-no{border:2px solid var(--rs)!important;box-shadow:0 0 6px rgba(244,63,94,.15)}
+.fb-note{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);color:var(--am);padding:3px 6px;font-size:7px;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;border-radius:0 0 5px 5px}
+
+/* Feedback modal */
+.fb-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center}
+.fb-modal{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;width:380px;max-width:90vw}
+.fb-modal h4{font-size:15px;margin-bottom:12px;color:var(--ac2)}
+.fb-modal .fb-m-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;margin-bottom:12px;background:var(--sf3)}
+.fb-modal .fb-m-btns{display:flex;gap:8px;margin-bottom:12px}
+.fb-modal .fb-m-btn{flex:1;padding:10px;border-radius:8px;border:2px solid var(--bd);background:var(--sf2);color:var(--tx2);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit}
+.fb-modal .fb-m-btn:hover{border-color:var(--tx3)}
+.fb-modal .fb-m-btn.sel-approved{border-color:var(--gn);background:var(--gnd);color:var(--gn)}
+.fb-modal .fb-m-btn.sel-rejected{border-color:var(--rs);background:var(--rsd);color:var(--rs)}
+.fb-modal textarea{width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:8px;border-radius:6px;font-family:'Outfit',sans-serif;font-size:12px;resize:vertical;min-height:60px;margin-bottom:12px}
+.fb-modal textarea:focus{outline:none;border-color:var(--ac)}
+.fb-modal .fb-m-actions{display:flex;gap:8px;justify-content:flex-end}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ac);color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Connection error banner */
+.conn-banner{background:var(--rsd);border:1px solid var(--rs);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:none;align-items:center;gap:10px;color:var(--rs);font-size:12px;font-weight:600}
+.conn-banner.show{display:flex}
+.conn-banner .retry-btn{background:var(--rs);color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+
+@media(max-width:900px){.cv,.cg{grid-template-columns:1fr}.ss{grid-template-columns:repeat(3,1fr)}.tg{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+@media(max-width:600px){.ss{grid-template-columns:repeat(2,1fr)}}
+
+/* ═══ SIZE REFERENCE TAB ═══ */
+.sr-subtabs{display:flex;gap:3px;background:var(--sf);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content;flex-wrap:wrap}
+.sr-subtab{padding:7px 14px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;color:var(--tx2);transition:all .2s;border:none;background:none;font-family:inherit}
+.sr-subtab:hover{color:var(--tx)}
+.sr-subtab.active{background:var(--ac);color:#fff}
+.sr-view{display:none}
+.sr-view.active{display:block}
+.sr-specs-table{overflow-x:auto;border-radius:12px;border:1px solid var(--bd);margin-top:10px}
+.sr-specs-table table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:left}
+.sr-specs-table th{background:var(--sf2);padding:10px 10px;font-weight:700;color:var(--ac2);font-size:9px;text-transform:uppercase;letter-spacing:.6px;font-family:'JetBrains Mono',monospace;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--ac)}
+.sr-specs-table td{padding:8px 10px;border-top:1px solid var(--bd);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px}
+.sr-specs-table tr:hover td{background:rgba(139,92,246,.04)}
+
+/* ═══ ADVANCED QC TAB ═══ */
+.qca-controls{margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qca-comparison{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.qca-left,.qca-right{background:var(--sf);border:1px solid var(--bd);padding:16px;border-radius:12px}
+.qca-checklist{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;margin-top:16px}
+.qca-section{background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.qca-section-title{font-size:12px;font-weight:700;color:var(--ac2);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.qca-check-label{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tx2);margin-bottom:7px;cursor:pointer;transition:color .15s}
+.qca-check-label:hover{color:var(--tx)}
+.qca-check-label input[type=checkbox]{accent-color:var(--ac);width:15px;height:15px;cursor:pointer}
+.qca-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+@media(max-width:900px){.qca-comparison{grid-template-columns:1fr}}
+
+/* QCA Overlay System */
+.qca-overlay-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:16px;flex-wrap:wrap}
+.qca-ovl-btn{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid var(--bd);background:var(--sf2);color:var(--tx2);font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:5px}
+.qca-ovl-btn:hover{border-color:var(--tx3);color:var(--tx)}
+.qca-ovl-btn.active{border-color:var(--ac);background:var(--acd);color:var(--ac2)}
+.qca-ovl-btn.active-measure{border-color:var(--cy);background:rgba(6,182,212,.1);color:var(--cy)}
+.qca-ovl-icon{font-size:14px}
+.qca-pose-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.qca-pose-cell{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;position:relative}
+.qca-pose-cell .pose-label{font-size:10px;font-weight:700;color:var(--tx2);text-align:center;padding:6px 0;background:var(--sf2);border-top:1px solid var(--bd);font-family:'JetBrains Mono',monospace}
+.qca-pose-img-wrap{position:relative;aspect-ratio:3/4;background:var(--sf3);overflow:hidden}
+.qca-pose-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.qca-pose-img-wrap .ovl-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--tx3);font-size:11px;flex-direction:column;gap:6px}
+.qca-pose-img-wrap .ovl-empty span{font-size:28px;opacity:.2}
+/* Overlay layers */
+.ovl-silhouette,.ovl-measure{position:absolute;inset:0;pointer-events:none;transition:opacity .3s ease;z-index:2}
+.ovl-silhouette{opacity:0}
+.ovl-measure{opacity:0}
+.ovl-silhouette.visible{opacity:1}
+.ovl-measure.visible{opacity:1}
+/* Per-cell toggle buttons */
+.qca-cell-toggles{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:5}
+.qca-cell-toggle{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.5);backdrop-filter:blur(6px);color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.qca-cell-toggle:hover{background:rgba(0,0,0,.7);transform:scale(1.1)}
+.qca-cell-toggle.on{background:rgba(139,92,246,.7);border-color:var(--ac)}
+.qca-cell-toggle.on-m{background:rgba(6,182,212,.7);border-color:var(--cy)}
+.qca-ref-panel{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px}
+@media(max-width:1200px){.qca-checklist [style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important}#srTechGrid{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:768px){.qca-pose-grid{grid-template-columns:repeat(2,1fr)}.qca-checklist [style*="grid-template-columns:repeat(4"]{grid-template-columns:1fr!important}}
+
+/* ═══ AI STUDIO ═══ */
+.ai-key-bar{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:16px;flex-wrap:wrap}
+.ai-canvas-wrap{border:1px solid var(--bd);border-radius:14px;background:var(--bg);overflow:auto;position:relative;height:620px}
+.ai-canvas{position:relative;width:920px;height:600px;background-image:radial-gradient(circle,var(--bd) 1px,transparent 1px);background-size:20px 20px}
+.ai-node{position:absolute;min-width:250px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;z-index:2;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:box-shadow .15s}
+.ai-node:hover{box-shadow:0 6px 24px rgba(139,92,246,.15)}
+.ai-node-wide{min-width:280px}
+.ai-node-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:9px 9px 0 0;font-size:11px;font-weight:700;color:#fff;cursor:grab;user-select:none}
+.ai-node-header:active{cursor:grabbing}
+.ai-node-body{padding:10px 12px}
+.ai-node-body select,.ai-node-body textarea,.ai-node-body input{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:5px;font-size:10px;font-family:'Outfit',sans-serif;width:100%;box-sizing:border-box}
+.ai-node-body textarea{resize:vertical;font-family:'JetBrains Mono',monospace;line-height:1.5}
+.ai-field-label{font-size:9px;color:var(--tx3);font-weight:600;display:block;margin-bottom:2px}
+.ai-node-port{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);display:inline-block;cursor:crosshair;transition:all .15s}
+.ai-node-port:hover{background:rgba(255,255,255,.6);transform:scale(1.3)}
+.ai-node-port.in{margin-left:-18px}
+.ai-node-port.out{margin-right:-18px}
+.ai-prompt-preview{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word}
+.ai-output-placeholder{text-align:center;padding:30px;color:var(--tx3);font-size:11px}
+.ai-output-img{width:100%;border-radius:8px;border:1px solid var(--bd)}
+.ai-generating{display:flex;align-items:center;justify-content:center;gap:8px;padding:40px;color:var(--ac2);font-size:12px}
+.ai-generating .spinner{width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-history{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:200px;overflow-y:auto}
+.ai-hist-item{background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.ai-hist-item:hover{border-color:var(--ac)}
+.ai-hist-item img{width:100%;aspect-ratio:3/4;object-fit:cover}
+.ai-hist-item .ai-hist-label{padding:4px 6px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-error{background:var(--rsd);border:1px solid var(--rs);border-radius:8px;padding:12px;color:var(--rs);font-size:11px;margin-top:8px}
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card,.tc{animation:fu .3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="ctr">
+  <div class="hdr">
+    <div><h1><span>DataPlus</span> Model Dashboard<span class="live-dot"></span></h1><div class="sub">Real-Time · 34 Models × 6 Poses · Supabase Sync</div></div>
+    <div class="badge">LIVE SYNC</div>
+  </div>
+
+  <div class="conn-banner" id="connBanner">⚠️ לא מחובר ל-Supabase — הדשבורד עובד במצב מקומי. הכניסי URL ו-Key בקוד.<button class="retry-btn" onclick="location.reload()">רענון</button></div>
+
+  <div class="user-bar">
+    <label>👤 את/ה:</label>
+    <select id="currentUser" onchange="setUser(this.value)">
+      <option value="">בחר/י שם</option>
+      <option value="שלומית">שלומית</option>
+      <option value="שקד">שקד</option>
+    </select>
+    <div class="sync-status" id="syncStatus"><span class="live-dot"></span> מחובר</div>
+  </div>
+
+  <div class="progress-bar" id="progressBar"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">סקירה</button>
+    <button class="tab" data-tab="gallery">גלריה & ניהול</button>
+    <button class="tab" data-tab="compare">השוואה</button>
+    <button class="tab" data-tab="prompts">פרומפטים</button>
+    <button class="tab" data-tab="sizeReference">📊 Size Reference</button>
+    <button class="tab" data-tab="qcAdvanced">🔍 QC</button>
+    <button class="tab" data-tab="aiStudio">🎨 AI Studio</button>
+    <button class="tab" data-tab="table">טבלה</button>
+  </div>
+
+  <div id="p-gallery" class="panel"><div class="filters" id="filters"></div><div class="grid" id="galleryGrid"></div></div>
+  <div id="p-overview" class="panel active"><div class="ss" id="statsStrip"></div><div id="liveGallery" style="margin-bottom:18px"></div><div class="cg"><div class="cb"><h4>Size Distribution</h4><canvas id="c1"></canvas></div><div class="cb"><h4>Ethnicity</h4><canvas id="c2"></canvas></div><div class="cb"><h4>Body Type × Size</h4><canvas id="c3"></canvas></div><div class="cb"><h4>Height vs Bust</h4><canvas id="c4"></canvas></div></div><div class="cg"><div class="cb"><h4>Skin Tone</h4><canvas id="c5"></canvas></div><div class="cb"><h4>Top 15 Usage</h4><canvas id="c6"></canvas></div></div></div>
+  <div id="p-compare" class="panel"><div class="chdr"><span style="font-size:12px;color:var(--tx2)">בחרי 2 מגלריה ←</span><span class="ccnt" id="ccnt">0/2</span><button class="btn btn-ac" id="cbtn" disabled onclick="runCompare()">השווי</button><button class="btn btn-ghost" onclick="clearSel()">נקי</button></div><div id="cmpR"></div></div>
+  <div id="p-prompts" class="panel"><p style="color:var(--tx2);margin-bottom:10px;font-size:11px">פרומפטים מלאים — 5 פוזות + Close-Up. כפתור העתקה על כל פרומפט.</p><div class="filters" style="margin-bottom:10px"><div class="fg"><label>אחראי/ת</label><select id="pmsAssign" onchange="genPrompts()"><option value="">הכל</option><option value="שלומית">שלומית</option><option value="שקד">שקד</option></select></div><div class="fg"><label>מודל</label><select id="pms" onchange="genPrompts()"><option value="all">כל המודלים</option></select></div><div class="fg"><label>סטטוס</label><select id="pmsStatus" onchange="genPrompts()"><option value="">הכל</option><option value="done">הושלם</option><option value="partial">הושלם חלקית</option><option value="none">לא התחיל</option></select></div></div><div id="pCon"></div>
+    <!-- Enhanced Size-Based Prompt Generator -->
+    <div style="margin-top:24px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">🎯</span><div><div style="font-size:14px;font-weight:700;color:var(--ac2)">Enhanced Size-Based Prompts</div><div style="font-size:10px;color:var(--tx3)">Generate prompts with facial structure & body composition from size_guidelines</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <label style="font-size:11px;font-weight:600;color:var(--tx2)">Select Size:</label>
+        <select id="enhSizeSelector" onchange="loadEnhancedSizePrompt()" style="background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer">
+          <option value="">Choose a size...</option>
+          <option value="XS">XS (Extra Small)</option>
+          <option value="S">S (Small)</option>
+          <option value="M">M (Medium)</option>
+          <option value="L">L (Large)</option>
+          <option value="XL">XL (Extra Large)</option>
+          <option value="2XL">2XL (Double Extra Large)</option>
+          <option value="3XL">3XL (Triple Extra Large)</option>
+          <option value="4XL">4XL (Quadruple Extra Large)</option>
+        </select>
+      </div>
+      <div id="enhPromptContent" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px">
+            <h4 style="font-size:12px;font-weight:700;color:var(--ac2);margin-bottom:10px">Size Visual Reference</h4>
+            <div id="enhPromptReference"></div>
+          </div>
+          <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px">
+            <h4 style="font-size:12px;font-weight:700;color:var(--ac2);margin-bottom:10px">Enhanced Prompt Template</h4>
+            <textarea id="enhPromptTemplate" readonly style="width:100%;height:350px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;resize:vertical;direction:ltr;text-align:left"></textarea>
+            <button class="btn btn-ac" onclick="copyEnhancedPrompt()" style="margin-top:8px;width:100%">📋 Copy Enhanced Prompt</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="p-table" class="panel"><div class="tw"><table id="dataTable"></table></div></div>
+
+  <!-- ═══ SIZE REFERENCE TAB ═══ -->
+  <div id="p-sizeReference" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">📊 Size Reference Guide — Technical Illustrations</h3>
+      <p style="color:var(--tx2);font-size:11px">Line drawings with exact measurements · Fitzpatrick skin classification · Size color mapping</p></div>
+    </div>
+
+    <!-- All 8 sizes — technical line drawings -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" id="srTechGrid"></div>
+
+    <!-- Fitzpatrick Scale -->
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:14px">🎨 Fitzpatrick Skin Type Classification</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="srFitzpatrick">
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#FDEBD3"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type I</div>
+          <div style="font-size:9px;color:var(--tx2)">Very Fair</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns easily, never tans</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">very fair</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#F5D0A9"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type II</div>
+          <div style="font-size:9px;color:var(--tx2)">Fair</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns easily, tans minimally</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">fair</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#D4A76A"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type III</div>
+          <div style="font-size:9px;color:var(--tx2)">Medium</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns moderately, tans</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">olive, light brown</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#B8860B"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type IV</div>
+          <div style="font-size:9px;color:var(--tx2)">Olive</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Burns minimally, tans easily</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">olive</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#8B6914"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type V</div>
+          <div style="font-size:9px;color:var(--tx2)">Brown / Dark Brown</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Rarely burns, tans profusely</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">brown, dark brown</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 8px;border:2px solid var(--bd);background:#4A2C0A"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx)">Type VI</div>
+          <div style="font-size:9px;color:var(--tx2)">Deep Brown / Black</div>
+          <div style="font-size:8px;color:var(--tx3);margin-top:2px">Never burns, tans deeply</div>
+          <div style="margin-top:4px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">dark brown</div>
+        </div>
+      </div>
+      <!-- Model-skin mapping -->
+      <div style="margin-top:16px;font-size:10px;color:var(--tx3)">
+        <div style="font-weight:700;color:var(--tx2);margin-bottom:6px">Models per skin tone:</div>
+        <div id="srSkinMap" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- Data tables (sub-tabs) -->
+    <div class="sr-subtabs">
+      <button class="sr-subtab active" onclick="switchSizeView('measurements',this)">📏 Measurements</button>
+      <button class="sr-subtab" onclick="switchSizeView('bodyComposition',this)">🏋️ Body Composition</button>
+      <button class="sr-subtab" onclick="switchSizeView('facialFeatures',this)">😊 Facial Features</button>
+    </div>
+    <div id="srView-measurements" class="sr-view active">
+      <div id="srSpecs-measurements" class="sr-specs-table"></div>
+    </div>
+    <div id="srView-bodyComposition" class="sr-view">
+      <div id="srSpecs-bodyComposition" class="sr-specs-table"></div>
+    </div>
+    <div id="srView-facialFeatures" class="sr-view">
+      <div id="srSpecs-facialFeatures" class="sr-specs-table"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ADVANCED QC TAB ═══ -->
+  <div id="p-qcAdvanced" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">🔍 Quality Control: AI Model Validation</h3>
+      <p style="color:var(--tx2);font-size:11px">Compare generated model against size reference specs · Overlay silhouette & measurement lines</p></div>
+    </div>
+    <div class="qca-controls">
+      <label style="font-size:12px;font-weight:600;color:var(--tx2)">Select Model:</label>
+      <select id="qcaModelSelect" onchange="loadQCAModel()" style="background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;margin-right:8px">
+        <option value="">Choose a model...</option>
+      </select>
+      <div id="qcaModelBadge" style="display:none"></div>
+    </div>
+
+    <div id="qcaMainContent" style="display:none">
+      <!-- Global overlay toggle -->
+      <div class="qca-overlay-bar">
+        <span style="font-size:11px;color:var(--tx3);font-weight:600">OVERLAY CONTROLS:</span>
+        <button class="qca-ovl-btn" id="btnOvlSilhouette" onclick="toggleGlobalOverlay('silhouette')">
+          <span class="qca-ovl-icon">📐</span> Size Rulers
+        </button>
+        <button class="qca-ovl-btn" id="btnOvlMeasure" onclick="toggleGlobalOverlay('measure')">
+          <span class="qca-ovl-icon">📏</span> Measurement Lines
+        </button>
+        <div style="margin-right:auto"></div>
+        <div id="qcaRefBadge" style="font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace"></div>
+      </div>
+
+      <!-- 6-image grid with overlays -->
+      <div class="qca-pose-grid" id="qcaPoseGrid"></div>
+
+      <!-- Reference specs panel -->
+      <div class="qca-ref-panel" id="qcaRefPanel" style="margin-top:16px">
+        <div id="qcaReferenceSpecs"></div>
+      </div>
+
+      <!-- QC Checklist -->
+      <div class="qca-checklist">
+        <h4 style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:14px">QC Validation Checklist — 4 Categories × 6 Checks</h4>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="qca-section">
+            <div class="qca-section-title">😊 Facial Features</div>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="facial_symmetry"/> Symmetry & Proportion</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="eye_clarity"/> Eye Clarity & Alignment</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="skin_texture"/> Skin Texture & Tone (Uniformity)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="feature_definition"/> Feature Definition (Nose, Mouth)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="expression_neutrality"/> Expression Neutrality</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="hairline_grooming"/> Hairline & Grooming Standards</label>
+          </div>
+          <div class="qca-section">
+            <div class="qca-section-title">🏋️ Body Composition</div>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="posture_alignment"/> Posture & Alignment (Vertical)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="muscle_tone"/> Muscle Tone & Definition (Balanced)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="body_fat_range"/> Body Fat % (Within Range)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="limb_symmetry"/> Limb Symmetry (Arms, Legs)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="joint_integrity"/> Joint Integrity & Range of Motion</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="overall_balance"/> Overall Physique Balance</label>
+          </div>
+          <div class="qca-section">
+            <div class="qca-section-title">📏 Measurements</div>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="height_weight"/> Height & Weight (Accurate)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="bust_waist_hip"/> Bust/Chest, Waist, Hip Ratios</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="inseam_sleeve"/> Inseam & Sleeve Lengths</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="circumference"/> Circumference Checks (Biceps, Thighs)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="anthropometric"/> Anthropometric Data (Precise)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="size_chart_compliance"/> Size Chart Compliance</label>
+          </div>
+          <div class="qca-section">
+            <div class="qca-section-title">🔄 Consistency</div>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="uniformity_samples"/> Uniformity Across Samples</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="color_matching"/> Color Matching (Standard Palette)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="texture_continuity"/> Texture Continuity (Fabric/Surface)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="assembly_seams"/> Assembly & Seam Quality</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="finish_detailing"/> Finish & Detailing (Flawless)</label>
+            <label class="qca-check-label"><input type="checkbox" class="qca-check" data-item="packaging_standard"/> Packaging Presentation (Standard)</label>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:6px">Notes:</label>
+          <textarea id="qcaNotes" placeholder="הערות QC..." style="width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:10px;border-radius:8px;font-family:'Outfit',sans-serif;font-size:12px;resize:vertical;min-height:80px"></textarea>
+        </div>
+        <div class="qca-actions">
+          <button class="btn" style="background:var(--gn);color:#fff;font-size:13px;padding:10px 24px" onclick="saveQCAResults('approved')">✅ APPROVE</button>
+          <button class="btn" style="background:var(--am);color:#000;font-size:13px;padding:10px 24px" onclick="saveQCAResults('needs_revision')">⚠️ NEEDS REVISION</button>
+          <button class="btn" style="background:var(--rs);color:#fff;font-size:13px;padding:10px 24px" onclick="saveQCAResults('rejected')">❌ REJECT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ═══ AI STUDIO — Node-Based Image Generator ═══ -->
+  <div id="p-aiStudio" class="panel">
+    <!-- API Key Bar -->
+    <div class="ai-key-bar" id="aiKeyBar">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <span style="font-size:18px">🔑</span>
+        <input type="password" id="aiApiKey" placeholder="Gemini API Key (לא נשמר בקובץ)" style="flex:1;min-width:200px;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:8px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px"/>
+        <button class="btn btn-ac" onclick="connectGemini()">חיבור</button>
+      </div>
+      <div id="aiConnStatus" style="font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace">⚪ לא מחובר</div>
+    </div>
+
+    <!-- Connected state -->
+    <div id="aiStudioMain" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">🎨 AI Fashion Model Studio</h3>
+        <p style="color:var(--tx2);font-size:11px">Node-based workflow · Gemini imagen · prompt → image</p></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" onclick="aiResetCanvas()">🗑️ נקה</button>
+          <button class="btn btn-ac" onclick="aiRunPipeline()" id="aiRunBtn">▶️ Generate</button>
+        </div>
+      </div>
+
+      <!-- Node Canvas -->
+      <div class="ai-canvas-wrap">
+        <div class="ai-canvas" id="aiCanvas">
+          <!-- Node: Model Selector -->
+          <div class="ai-node" id="aiNode-model" style="left:30px;top:30px" data-type="model">
+            <div class="ai-node-header" style="background:var(--ac)">
+              <span>👤 Model Selection</span>
+              <span class="ai-node-port out" data-port="model-out"></span>
+            </div>
+            <div class="ai-node-body">
+              <select id="aiModelSelect" onchange="aiUpdatePreview()" style="width:100%">
+                <option value="">בחרי מודל...</option>
+              </select>
+              <div id="aiModelPreview" style="margin-top:8px;font-size:9px;color:var(--tx3)"></div>
+            </div>
+          </div>
+
+          <!-- Node: Size/Body Specs -->
+          <div class="ai-node" id="aiNode-specs" style="left:30px;top:230px" data-type="specs">
+            <div class="ai-node-header" style="background:var(--cy)">
+              <span class="ai-node-port in" data-port="specs-in"></span>
+              <span>📏 Body Specs</span>
+              <span class="ai-node-port out" data-port="specs-out"></span>
+            </div>
+            <div class="ai-node-body" id="aiSpecsBody">
+              <div style="color:var(--tx3);font-size:9px">← חברי מודל כדי לטעון</div>
+            </div>
+          </div>
+
+          <!-- Node: Pose Selector -->
+          <div class="ai-node" id="aiNode-pose" style="left:320px;top:30px" data-type="pose">
+            <div class="ai-node-header" style="background:var(--gn)">
+              <span>🧍 Pose</span>
+              <span class="ai-node-port out" data-port="pose-out"></span>
+            </div>
+            <div class="ai-node-body">
+              <select id="aiPoseSelect" style="width:100%">
+                <option value="Front">Front</option>
+                <option value="45L">45° Left</option>
+                <option value="45R">45° Right</option>
+                <option value="Profile 90">Profile 90°</option>
+                <option value="Back">Back</option>
+                <option value="Close-Up">Close-Up</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Node: Studio Conditions (FIXED — identical for all models) -->
+          <div class="ai-node" id="aiNode-style" style="left:320px;top:170px" data-type="style">
+            <div class="ai-node-header" style="background:var(--am)">
+              <span>🔒 Studio & Output Settings</span>
+              <span class="ai-node-port out" data-port="style-out"></span>
+            </div>
+            <div class="ai-node-body">
+              <div style="font-size:9px;color:var(--tx2);line-height:1.7;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px;direction:ltr;text-align:left">
+                <div><span style="color:var(--am);font-weight:700">BG:</span> Seamless pure white background</div>
+                <div><span style="color:var(--am);font-weight:700">LIGHT:</span> Soft even lighting, minimal shadows.</div>
+                <div><span style="color:var(--am);font-weight:700">WARDROBE:</span> Black ribbed tank top, biker shorts, white sneakers.</div>
+              </div>
+              <label class="ai-field-label" style="margin-top:8px">📐 Aspect Ratio</label>
+              <select id="aiAspectRatio" style="width:100%" onchange="aiAssemblePrompt()">
+                <option value="3:4" selected>3:4 — Portrait (standard)</option>
+                <option value="4:3">4:3 — Landscape</option>
+                <option value="1:1">1:1 — Square</option>
+                <option value="9:16">9:16 — Tall Portrait</option>
+                <option value="16:9">16:9 — Wide Landscape</option>
+              </select>
+              <label class="ai-field-label" style="margin-top:6px">🖼️ Resolution</label>
+              <select id="aiImageSize" style="width:100%" onchange="aiAssemblePrompt()">
+                <option value="">Auto (default)</option>
+                <option value="1K">1K (1024px)</option>
+                <option value="2K" selected>2K (2048px)</option>
+                <option value="4K">4K (4096px)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Node: Custom Prompt Override -->
+          <div class="ai-node" id="aiNode-custom" style="left:320px;top:420px" data-type="custom">
+            <div class="ai-node-header" style="background:var(--pk)">
+              <span>✏️ Custom Prompt</span>
+              <span class="ai-node-port out" data-port="custom-out"></span>
+            </div>
+            <div class="ai-node-body">
+              <textarea id="aiCustomPrompt" placeholder="תוספת חופשית לפרומפט (אופציונלי)..." style="width:100%;min-height:50px"></textarea>
+            </div>
+          </div>
+
+          <!-- Node: Prompt Assembly (auto) -->
+          <div class="ai-node" id="aiNode-prompt" style="left:620px;top:60px" data-type="prompt">
+            <div class="ai-node-header" style="background:var(--or)">
+              <span class="ai-node-port in" data-port="prompt-in"></span>
+              <span>📝 Assembled Prompt</span>
+              <span class="ai-node-port out" data-port="prompt-out"></span>
+            </div>
+            <div class="ai-node-body">
+              <div id="aiPromptPreview" class="ai-prompt-preview" style="max-height:220px;overflow-y:auto;font-size:9px;line-height:1.5;color:var(--tx2)">הפרומפט ייבנה אוטומטית מהנודים...</div>
+              <button class="btn btn-ghost" style="margin-top:6px;width:100%;font-size:9px" onclick="aiCopyPrompt()">📋 העתק</button>
+            </div>
+          </div>
+
+          <!-- Node: Gemini Output -->
+          <div class="ai-node ai-node-wide" id="aiNode-output" style="left:620px;top:360px" data-type="output">
+            <div class="ai-node-header" style="background:linear-gradient(135deg,var(--ac),var(--pk))">
+              <span class="ai-node-port in" data-port="output-in"></span>
+              <span>🖼️ Generated Image</span>
+            </div>
+            <div class="ai-node-body" id="aiOutputBody">
+              <div class="ai-output-placeholder">
+                <div style="font-size:32px;margin-bottom:8px">🎨</div>
+                <div>לחצי Generate כדי ליצור תמונה</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SVG Connections (visual wires) -->
+          <svg class="ai-wires" id="aiWires" style="position:absolute;inset:0;pointer-events:none;z-index:0">
+          </svg>
+        </div>
+      </div>
+
+      <!-- Generation History -->
+      <div style="margin-top:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:8px">📜 היסטוריית יצירות</div>
+        <div class="ai-history" id="aiHistory">
+          <div style="text-align:center;padding:20px;color:var(--tx3);font-size:10px">עדיין לא נוצרו תמונות</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div id="fbModal"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  🔧 SUPABASE CONFIG — FILL IN YOUR CREDENTIALS  ║
+// ╚══════════════════════════════════════════════════╝
+const SUPABASE_URL = 'https://jxgfkvjtlxpgivzldlnd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4Z2Zrdmp0bHhwZ2l2emxkbG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTU0NTAsImV4cCI6MjA4OTIzMTQ1MH0.wI-54hQMnKRqPyu3Q2O0uwF2h-FIKgRT49NCgHP8O3k';
+const STORAGE_BUCKET = 'model-images';
+
+// ── SUPABASE CLIENT ──
+let sb = null;
+let isConnected = false;
+try {
+  if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('YOUR_')) {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    isConnected = true;
+  }
+} catch(e) { console.warn('Supabase init failed:', e); }
+
+if (!isConnected) document.getElementById('connBanner').classList.add('show');
+
+// ── LOCAL FALLBACK STATE ──
+let dbStatus = {};   // model_id → {assigned_to, pose_front, pose_45l, ...}
+let dbImages = {};   // "model_id_pose" → image_url
+let currentUser = localStorage.getItem('dpUser') || '';
+document.getElementById('currentUser').value = currentUser;
+
+function setUser(v) { currentUser = v; localStorage.setItem('dpUser', v); }
+
+// ── MODEL DATA ──
+const MD=[
+{id:682,nm:"Alessandra",cnt:431,sz:"XS",bd:"regular",sk:"olive",hr:"brunette",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:176,bu:78.74,wa:60.96,hp:88.9,ins:30,tr:"Tallest XS — runway-proportioned, narrowest bust",tg:["tallest XS","narrowest bust"],cl:"#8b5cf6"},
+{id:678,nm:"Zara",cnt:5382,sz:"S",bd:"regular",sk:"olive",hr:"black",eth:"Mixed",st:"tall",ag:"regular",ey:"Brown",h:175,bu:74.93,wa:60.96,hp:87.63,ins:30,tr:"Only Mixed-ethnicity; smallest bust (74.9)",tg:["only Mixed","smallest bust"],cl:"#06b6d4"},
+{id:677,nm:"Mei",cnt:1433,sz:"XS",bd:"regular",sk:"fair",hr:"blonde",eth:"asian",st:"tall",ag:"regular",ey:"Green",h:175,bu:81.28,wa:60.96,hp:88.9,ins:29.5,tr:"Only Asian; green eyes; blonde+Asian",tg:["only Asian","green eyes"],cl:"#10b981"},
+{id:614,nm:"Claire",cnt:10687,sz:"XS",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:162,bu:86.36,wa:66.04,hp:73.66,ins:68.58,tr:"Narrowest hips (73.7) — column silhouette",tg:["narrowest hips"],cl:"#f59e0b"},
+{id:665,nm:"Hazel",cnt:1768,sz:"XS",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"junior",ey:"Hazel",h:170,bu:86.36,wa:66.04,hp:99.06,ins:28,tr:"Only junior; hazel eyes; pear XS",tg:["only junior","hazel eyes"],cl:"#f97316"},
+{id:590,nm:"Amara",cnt:10591,sz:"S",bd:"regular",sk:"dark brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:158,bu:80.01,wa:60.96,hp:88.9,ins:67.31,tr:"Shortest regular (158); dark-brown S",tg:["shortest regular"],cl:"#ec4899"},
+{id:631,nm:"Elsa",cnt:9776,sz:"S",bd:"regular",sk:"very fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:167,bu:83.82,wa:67.31,hp:91.44,ins:null,tr:"Nordic look; no inseam data",tg:["very fair","Nordic"],cl:"#06b6d4"},
+{id:620,nm:"Natalie",cnt:12453,sz:"M",bd:"regular",sk:"fair",hr:"dark brown",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:180,bu:83.82,wa:68.58,hp:100.33,ins:71.12,tr:"Tallest regular (180); long inseam M",tg:["tallest regular M"],cl:"#8b5cf6"},
+{id:596,nm:"Isabella",cnt:44582,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:165,bu:88.9,wa:73.66,hp:99.06,ins:67.94,tr:"High-usage Latino M; hourglass",tg:["high usage","hourglass"],cl:"#10b981"},
+{id:616,nm:"Sofia",cnt:12770,sz:"S",bd:"regular",sk:"olive",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:88.9,wa:63.5,hp:91.44,ins:66.04,tr:"Smallest waist-to-bust S",tg:["tiny waist"],cl:"#f59e0b"},
+{id:621,nm:"Valentina",cnt:115626,sz:"M",bd:"regular",sk:"olive",hr:"dark brown",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:163,bu:93.98,wa:76.2,hp:99.06,ins:66.04,tr:"#2 usage (115K); go-to M",tg:["#2 usage"],cl:"#f43f5e"},
+{id:593,nm:"Keisha",cnt:41629,sz:"L",bd:"regular",sk:"light brown",hr:"black",eth:"black",st:"tall",ag:"regular",ey:"Brown",h:171,bu:86.36,wa:83.82,hp:118.11,ins:67.94,tr:"Widest hips regular L",tg:["widest hips L"],cl:"#06b6d4"},
+{id:595,nm:"Lucia",cnt:42912,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"latino",st:"regular",ag:"regular",ey:"Brown",h:167,bu:91.44,wa:76.2,hp:99.06,ins:64.14,tr:"Sister to Isabella",tg:["similar Isabella"],cl:"#ec4899"},
+{id:605,nm:"Savannah",cnt:26132,sz:"S",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:92.71,wa:76.2,hp:97.79,ins:66.04,tr:"Largest bust S (92.7)",tg:["biggest bust S"],cl:"#8b5cf6"},
+{id:613,nm:"Rachel",cnt:27260,sz:"M",bd:"regular",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:167,bu:91.44,wa:81.28,hp:95.25,ins:67.94,tr:"Blue-eyed brunette M",tg:["blue brunette"],cl:"#10b981"},
+{id:594,nm:"Nia",cnt:10953,sz:"M",bd:"regular",sk:"olive",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:168,bu:90.17,wa:78.74,hp:104.14,ins:67.31,tr:"Olive+Black rare; widest hips reg M",tg:["olive+black"],cl:"#f97316"},
+{id:624,nm:"Destiny",cnt:57843,sz:"L",bd:"regular",sk:"light brown",hr:"light brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:91.44,wa:76.2,hp:109.22,ins:69.22,tr:"Only lt-brown hair; shortest L; 57K",tg:["only lt brown hair"],cl:"#f59e0b"},
+{id:598,nm:"Kristin",cnt:8726,sz:"XL",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Blue",h:173,bu:96.52,wa:77.47,hp:114.3,ins:63.5,tr:"Only regular XL blonde",tg:["blonde XL"],cl:"#06b6d4"},
+{id:609,nm:"Carmen",cnt:7067,sz:"L",bd:"regular",sk:"fair",hr:"brunette",eth:"latino",st:"tall",ag:"regular",ey:"Brown",h:180,bu:104.14,wa:88.9,hp:129.54,ins:77.47,tr:"Longest inseam (77.5); tallest L",tg:["longest inseam"],cl:"#f43f5e"},
+{id:604,nm:"Brittany",cnt:108813,sz:"M",bd:"regular",sk:"fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Blue",h:157,bu:96.52,wa:93.98,hp:99.06,ins:62.87,tr:"#3 usage (108K); apple shape",tg:["#3 usage"],cl:"#ec4899"},
+{id:584,nm:"Tamara",cnt:175041,sz:"XL",bd:"regular",sk:"olive",hr:"dark brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:97.79,wa:82.55,hp:113.03,ins:62.23,tr:"#1 USAGE (175K!)",tg:["#1 usage"],cl:"#ef4444"},
+{id:600,nm:"Heather",cnt:56390,sz:"L",bd:"regular",sk:"very fair",hr:"blonde",eth:"caucasian",st:"regular",ag:"regular",ey:"Hazel",h:165,bu:104.14,wa:91.44,hp:111.76,ins:67.31,tr:"Only very-fair L; hazel eyes",tg:["very fair L"],cl:"#8b5cf6"},
+{id:617,nm:"Aaliyah",cnt:23291,sz:"2XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"black",st:"tall",ag:"regular",ey:"Brown",h:175,bu:101.6,wa:99.06,hp:132.08,ins:63.5,tr:"Tallest Black curvy",tg:["tall Black curvy"],cl:"#10b981"},
+{id:599,nm:"Brooke",cnt:72438,sz:"2XL",bd:"curvy",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:170,bu:111.76,wa:92.71,hp:127,ins:65.41,tr:"Only fair blonde curvy; top 2XL",tg:["blonde curvy"],cl:"#f97316"},
+{id:619,nm:"Marisol",cnt:14040,sz:"2XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"latino",st:"tall",ag:"regular",ey:"Brown",h:177,bu:106.68,wa:106.68,hp:140.97,ins:69.85,tr:"Tallest curvy (177); bust=waist",tg:["tallest curvy"],cl:"#f59e0b"},
+{id:610,nm:"Madison",cnt:109276,sz:"2XL",bd:"curvy",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:157,bu:114.3,wa:91.44,hp:121.92,ins:58.42,tr:"#1 curvy (109K); petite+curvy",tg:["#1 curvy"],cl:"#f43f5e"},
+{id:587,nm:"Imani",cnt:11936,sz:"3XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:168,bu:121.92,wa:104.14,hp:129.54,ins:69.85,tr:"Longest inseam curvy 3XL",tg:["long legs 3XL"],cl:"#06b6d4"},
+{id:656,nm:"Ashley",cnt:69192,sz:"2XL",bd:"curvy",sk:"fair",hr:"brunette",eth:"caucasian",st:"regular",ag:"regular",ey:"Brown",h:167,bu:119.38,wa:115.57,hp:147.32,ins:26,tr:"Widest hips 2XL (147); extreme pear",tg:["widest 2XL"],cl:"#ec4899"},
+{id:588,nm:"Precious",cnt:27276,sz:"3XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:162,bu:128.27,wa:120.65,hp:149.86,ins:60.96,tr:"Largest waist 3XL",tg:["largest waist"],cl:"#8b5cf6"},
+{id:618,nm:"Jasmine",cnt:39811,sz:"3XL",bd:"curvy",sk:"brown",hr:"dark brown",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:167,bu:111.76,wa:93.98,hp:139.7,ins:63.5,tr:"Hourglass at 3XL (ratio 0.67)",tg:["hourglass 3XL"],cl:"#10b981"},
+{id:673,nm:"Mackenzie",cnt:32716,sz:"3XL",bd:"curvy",sk:"fair",hr:"dark brown",eth:"caucasian",st:"tall",ag:"regular",ey:"Brown",h:172,bu:124.46,wa:107.95,hp:143.51,ins:25.5,tr:"Only fair 3XL; shortest inseam",tg:["only fair 3XL"],cl:"#f97316"},
+{id:700,nm:"Harper",cnt:22332,sz:"4XL",bd:"curvy",sk:"fair",hr:"blonde",eth:"caucasian",st:"tall",ag:"regular",ey:"Hazel",h:182,bu:142.24,wa:111.76,hp:148.59,ins:29,tr:"TALLEST (182); only blonde 4XL",tg:["tallest overall"],cl:"#f59e0b"},
+{id:662,nm:"Diamond",cnt:48929,sz:"4XL",bd:"curvy",sk:"brown",hr:"black",eth:"black",st:"regular",ag:"regular",ey:"Brown",h:170,bu:132.08,wa:114.3,hp:162.56,ins:26,tr:"WIDEST HIPS (162.6); top 4XL",tg:["widest hips ever"],cl:"#f43f5e"},
+{id:675,nm:"Aisha",cnt:14929,sz:"4XL",bd:"curvy",sk:"dark brown",hr:"black",eth:"african",st:"tall",ag:"regular",ey:"Brown",h:173,bu:149.86,wa:129.54,hp:154.94,ins:29,tr:"Only African; LARGEST BUST (149.9)",tg:["only African"],cl:"#ef4444"}
+];
+
+const mxC=Math.max(...MD.map(m=>m.cnt));
+const SO=['XS','S','M','L','XL','2XL','3XL','4XL'];
+const SC={XS:'#FF6B9D',S:'#C44569',M:'#A0522D',L:'#D4A574',XL:'#E8B4A8','2XL':'#F0C8B8','3XL':'#F5D5C8','4XL':'#FCDDC1'};
+const allPoses=["Front","45L","45R","Profile 90","Back","Close-Up"];
+const poseDB={"Front":"pose_front","45L":"pose_45l","45R":"pose_45r","Profile 90":"pose_profile","Back":"pose_back","Close-Up":"pose_closeup"};
+
+// Body weight estimates (kg) and build description per model
+const WT={682:{w:57,d:"slim/lean"},678:{w:61,d:"slender"},677:{w:57,d:"slim/lean"},614:{w:49,d:"slim/lean"},665:{w:54,d:"slim/lean"},590:{w:50,d:"slender"},631:{w:56,d:"slender"},620:{w:72,d:"medium/average"},596:{w:61,d:"medium/average"},616:{w:56,d:"slender"},621:{w:60,d:"medium/average"},593:{w:76,d:"full-figured"},595:{w:63,d:"medium/average"},605:{w:57,d:"slender"},613:{w:63,d:"medium/average"},594:{w:64,d:"medium/average"},624:{w:68,d:"full-figured"},598:{w:84,d:"plus-size"},609:{w:85,d:"full-figured"},604:{w:57,d:"medium/average"},584:{w:74,d:"plus-size"},600:{w:71,d:"full-figured"},617:{w:98,d:"plus-size/heavy"},599:{w:92,d:"plus-size"},619:{w:101,d:"plus-size/heavy"},610:{w:78,d:"plus-size"},587:{w:99,d:"plus-size/heavy"},656:{w:91,d:"plus-size/heavy"},588:{w:93,d:"plus-size/heavy"},618:{w:97,d:"plus-size/heavy"},673:{w:104,d:"plus-size/heavy"},700:{w:125,d:"heavy/full"},662:{w:109,d:"heavy/full"},675:{w:115,d:"heavy/full"}};
+let sel=[];
+
+// Prompt data
+const poseDesc={"Front":"Standing facing camera, arms relaxed at sides, feet shoulder-width, neutral expression, looking into lens.","45L":"Body turned 45° left, head slightly back toward camera, natural stance, arms relaxed.","45R":"Body turned 45° right, head slightly back toward camera, natural stance, arms relaxed.","Profile 90":"Full side profile (90°), standing straight, arms at sides, looking straight ahead.","Back":"Back fully toward camera, feet shoulder-width, head away, arms at sides.","Close-Up":"Head and shoulders close-up portrait. Face filling ~60% of frame. Same lighting as body shots but tighter crop. Skin texture, eye color, hair texture, facial structure. Neutral expression, slight natural smile. 85mm, shallow DOF, eyes sharp."};
+const studio="Seamless pure white background. Soft even lighting, minimal shadows. Subtle grounding shadow under feet only. Full body head-to-toe, centered. Neutral perspective. High sharpness, realistic casting photography.";
+const studioCU="Seamless pure white background. Soft even beauty lighting with subtle fill. Head and shoulders framing. High sharpness, realistic casting close-up.";
+const wardrobe="Black ribbed tank top with wide straps. Black fitted biker shorts. White minimal low-top sneakers, no branding. No logos, prints, accessories, jewelry, or props.";
+const wardrobeCU="Black ribbed tank top with wide straps visible at shoulders. No accessories, jewelry, or props.";
+const consistency="6-image set (Front, 45L, 45R, Profile 90, Back, Close-Up). Model identical across all. Uniform across all models. Natural casting look, NOT editorial.";
+const goalTxt="Generate an AI fashion model inspired by this type. Do NOT copy a real person. Maintain matching general attributes.";
+
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+function mkPrompt(m,poseName){
+  const isCU=poseName==='Close-Up';
+  const wt=WT[m.id]||{w:'?',d:'average'};
+  return `GOAL: ${goalTxt}\n\nMODEL: "${m.nm}" — ${cap(m.st)}, ${m.bd}, size ${m.sz}, ${m.h}cm, ~${wt.w}kg (${wt.d} build). ${cap(m.sk)} skin, ${m.eth}, ${m.hr} hair, ${m.ey.toLowerCase()} eyes. B${m.bu}/W${m.wa}/H${m.hp}cm${m.ins?', inseam '+m.ins+'cm':''}. Body weight should visually match a ${wt.d} ${m.h}cm woman weighing approximately ${wt.w}kg. Trait: ${m.tr}.\n\nPOSE [${poseName}]: ${poseDesc[poseName]}\n\nSTUDIO: ${isCU?studioCU:studio}\n\nWARDROBE: ${isCU?wardrobeCU:wardrobe}\n\nCONSISTENCY: ${consistency}`;
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+function cpP(btn){const t=btn.parentElement.textContent.replace('Copy','').trim();navigator.clipboard.writeText(t).then(()=>{btn.textContent='✓';toast('הפרומפט הועתק!');setTimeout(()=>btn.textContent='Copy',1200)})}
+
+// ── SUPABASE DATA LAYER ──
+function getStatus(mid){return dbStatus[mid]||{assigned_to:'',pose_front:false,pose_45l:false,pose_45r:false,pose_profile:false,pose_back:false,pose_closeup:false}}
+function getDoneCount(mid){const s=getStatus(mid);return allPoses.filter(p=>s[poseDB[p]]).length}
+
+// Feedback cache: "modelId_pose" → {status, note, created_by, created_at}
+let dbFeedback={};
+function getFB(mid,pose){return dbFeedback[mid+'_'+pose]||null}
+function getFBCounts(mid){let a=0,r=0;allPoses.forEach(p=>{const f=getFB(mid,p);if(f){if(f.status==='approved')a++;if(f.status==='rejected')r++}});return{approved:a,rejected:r}}
+
+async function loadAllData(){
+  if(!sb)return;
+  try{
+    const{data:statuses}=await sb.from('model_status').select('*');
+    if(statuses)statuses.forEach(r=>{dbStatus[r.id]=r});
+    const{data:images}=await sb.from('model_images').select('*');
+    if(images)images.forEach(r=>{dbImages[r.model_id+'_'+r.pose]=r.image_url});
+    const{data:feedback}=await sb.from('model_feedback').select('*').order('created_at',{ascending:false});
+    if(feedback)feedback.forEach(r=>{const k=r.model_id+'_'+r.pose;if(!dbFeedback[k])dbFeedback[k]=r});
+  }catch(e){console.warn('Load failed:',e)}
+}
+
+// Auto-assign: Shaked=15, Shlomit=19
+const SHAKED_IDS=[677,665,678,590,596,594,620,593,609,598,619,599,587,673,675];
+const SHLOMIT_IDS=[682,614,631,616,621,595,605,613,624,604,584,600,617,610,656,588,618,700,662];
+
+async function autoAssign(){
+  let updated=0;
+  for(const mid of SHAKED_IDS){
+    const s=getStatus(mid);
+    if(!s.assigned_to){
+      dbStatus[mid]={...s,assigned_to:'שקד',updated_by:'מערכת',updated_at:new Date().toISOString()};
+      if(sb)await sb.from('model_status').update({assigned_to:'שקד',updated_by:'מערכת',updated_at:new Date().toISOString()}).eq('id',mid);
+      updated++;
+    }
+  }
+  for(const mid of SHLOMIT_IDS){
+    const s=getStatus(mid);
+    if(!s.assigned_to){
+      dbStatus[mid]={...s,assigned_to:'שלומית',updated_by:'מערכת',updated_at:new Date().toISOString()};
+      if(sb)await sb.from('model_status').update({assigned_to:'שלומית',updated_by:'מערכת',updated_at:new Date().toISOString()}).eq('id',mid);
+      updated++;
+    }
+  }
+  if(updated)console.log(`Auto-assigned ${updated} models`);
+}
+
+async function updateAssign(mid,val){
+  dbStatus[mid]={...getStatus(mid),assigned_to:val,updated_at:new Date().toISOString(),updated_by:currentUser};
+  if(sb){const{error}=await sb.from('model_status').update({assigned_to:val,updated_by:currentUser,updated_at:new Date().toISOString()}).eq('id',mid);if(error)console.error('Assign error:',error)}
+  updateProgress();renderDataTable();
+}
+
+async function updateCheck(mid,pose,val){
+  const col=poseDB[pose];
+  const s={...getStatus(mid),[col]:val,updated_by:currentUser,updated_at:new Date().toISOString()};
+  dbStatus[mid]=s;
+  if(sb){const{error}=await sb.from('model_status').update({[col]:val,updated_by:currentUser,updated_at:new Date().toISOString()}).eq('id',mid);if(error)console.error('Check error:',error)}
+  updateProgress();fGal();renderDataTable();renderLiveGallery();
+}
+
+async function uploadImage(mid,pose,file){
+  const key=mid+'_'+pose.replace(/ /g,'_');
+  if(sb){
+    try{
+      const ext=file.name.split('.').pop()||'jpg';
+      const path=`${mid}/${pose.replace(/ /g,'_')}.${ext}`;
+      // Remove old file first (upsert can be flaky)
+      await sb.storage.from(STORAGE_BUCKET).remove([path]);
+      const{data,error}=await sb.storage.from(STORAGE_BUCKET).upload(path,file,{cacheControl:'3600',contentType:file.type});
+      if(error){console.error('Upload error:',error);toast('שגיאה בהעלאה: '+error.message);return}
+      const{data:urlData}=sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      const url=urlData.publicUrl+'?t='+Date.now();
+      dbImages[mid+'_'+pose]=url;
+      const{error:dbErr}=await sb.from('model_images').upsert({model_id:mid,pose:pose,image_url:url,uploaded_by:currentUser},{onConflict:'model_id,pose'});
+      if(dbErr)console.error('DB error:',dbErr);
+    }catch(e){console.error('Upload exception:',e);toast('שגיאה: '+e.message);return}
+  }else{
+    dbImages[mid+'_'+pose]=URL.createObjectURL(file);
+  }
+  fGal();renderLiveGallery();toast('תמונה הועלתה!');
+}
+
+async function removeImage(mid,pose){
+  delete dbImages[mid+'_'+pose];
+  if(sb){
+    const path=`${mid}/${pose.replace(/ /g,'_')}.jpg`;
+    await sb.storage.from(STORAGE_BUCKET).remove([path]);
+    await sb.from('model_images').delete().match({model_id:mid,pose:pose});
+  }
+  fGal();renderLiveGallery();renderDataTable();toast('תמונה נמחקה');
+}
+
+function confirmDelete(mid,pose){
+  const m=MD.find(x=>x.id===mid);
+  if(confirm(`למחוק את התמונה של ${m?m.nm:mid} — ${pose}?`)){
+    removeImage(mid,pose);
+    closeFBModal();
+  }
+}
+
+// ── FEEDBACK SYSTEM ──
+async function saveFeedback(mid,pose,status,note){
+  const fb={model_id:mid,pose:pose,status:status,note:note||'',created_by:currentUser,created_at:new Date().toISOString()};
+  dbFeedback[mid+'_'+pose]=fb;
+  if(sb){
+    const{error}=await sb.from('model_feedback').upsert({model_id:mid,pose:pose,status:status,note:note||'',created_by:currentUser,created_at:new Date().toISOString()},{onConflict:'model_id,pose,created_at'});
+    if(error)console.error('Feedback error:',error);
+  }
+  fGal();renderDataTable();renderLiveGallery();
+  toast(status==='approved'?'✅ מאושר!':'❌ סומן לתיקון');
+  closeFBModal();
+}
+
+function openFBModal(mid,pose){
+  const m=MD.find(x=>x.id===mid);if(!m)return;
+  const img=dbImages[mid+'_'+pose]||'';
+  const existing=getFB(mid,pose);
+  const curStatus=existing?existing.status:'pending';
+  const curNote=existing?existing.note:'';
+  document.getElementById('fbModal').innerHTML=`
+    <div class="fb-modal-overlay" onclick="if(event.target===this)closeFBModal()">
+      <div class="fb-modal">
+        <h4>${m.nm} — ${pose}</h4>
+        ${img?`<img class="fb-m-img" src="${img}"/>`:`<div class="fb-m-img" style="display:flex;align-items:center;justify-content:center;color:var(--tx3)">אין תמונה</div>`}
+        <div class="fb-m-btns">
+          <div class="fb-m-btn ${curStatus==='approved'?'sel-approved':''}" id="fbBtnOk" onclick="toggleFBBtn('approved')">✅ מאושר</div>
+          <div class="fb-m-btn ${curStatus==='rejected'?'sel-rejected':''}" id="fbBtnNo" onclick="toggleFBBtn('rejected')">❌ צריך תיקון</div>
+        </div>
+        <textarea id="fbNote" placeholder="הערה (אופציונלי) — מה צריך לתקן?">${curNote}</textarea>
+        <div class="fb-m-actions">
+          <button class="btn btn-ghost" onclick="closeFBModal()">ביטול</button>
+          <button class="btn btn-ac" onclick="submitFB(${mid},'${pose}')">שמור</button>
+        </div>
+      </div>
+    </div>`;
+  window._fbStatus=curStatus;
+}
+
+function toggleFBBtn(s){
+  window._fbStatus=s;
+  document.getElementById('fbBtnOk').className='fb-m-btn '+(s==='approved'?'sel-approved':'');
+  document.getElementById('fbBtnNo').className='fb-m-btn '+(s==='rejected'?'sel-rejected':'');
+}
+
+function submitFB(mid,pose){
+  const note=document.getElementById('fbNote').value;
+  saveFeedback(mid,pose,window._fbStatus||'pending',note);
+}
+
+function closeFBModal(){document.getElementById('fbModal').innerHTML=''}
+
+// ── MODEL DETAIL PAGE ──
+function openModelPage(mid){
+  const m=MD.find(x=>x.id===mid);if(!m)return;
+  const st=getStatus(m.id);const dc=getDoneCount(m.id);const wt=WT[m.id]||{w:'?',d:'?'};const fbc=getFBCounts(m.id);
+
+  // Build image grid with large previews
+  const imgGrid=allPoses.map(p=>{
+    const img=dbImages[m.id+'_'+p]||'';const fb=getFB(m.id,p);
+    const fbCls=fb?(fb.status==='approved'?'fb-slot-ok':fb.status==='rejected'?'fb-slot-no':''):'';
+    const checked=st[poseDB[p]];
+    return `<div style="text-align:center">
+      <div class="img-slot ${img?'has-img':''} ${fbCls}" style="aspect-ratio:3/4;width:100%;border-radius:10px;font-size:10px">
+        ${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:9px"/>
+          <div class="img-overlay" style="opacity:1;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 60%)">
+            <span class="io-btn ${fb&&fb.status==='approved'?'io-active-ok':''}" onclick="saveFeedback(${m.id},'${p}','approved','');openModelPage(${m.id})" title="מאושר">✅</span>
+            <span class="io-btn ${fb&&fb.status==='rejected'?'io-active-no':''}" onclick="openFBModal(${m.id},'${p}')" title="צריך תיקון">❌</span>
+            <label class="io-btn io-replace" title="החלף תמונה">🔄<input type="file" accept="image/*" onchange="handleUpload(event,${m.id},'${p}');setTimeout(()=>openModelPage(${m.id}),1500)" style="display:none"/></label>
+            <span class="io-btn io-del" onclick="confirmDelete(${m.id},'${p}')" title="מחק תמונה">🗑️</span>
+          </div>
+          ${fb&&fb.note?`<div class="fb-note">💬 ${fb.note}</div>`:''}
+        `:`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;color:var(--tx3)">
+            <div style="font-size:20px">📷</div>
+            <div style="font-size:10px">${p}</div>
+            <label class="btn btn-ghost" style="font-size:9px;padding:4px 10px;cursor:pointer">העלאה<input type="file" accept="image/*" onchange="handleUpload(event,${m.id},'${p}');setTimeout(()=>openModelPage(${m.id}),1500)" style="display:none"/></label>
+          </div>`}
+      </div>
+      <div style="margin-top:6px;font-size:11px;font-weight:600;color:var(--tx2)">${p}</div>
+      <div style="margin-top:2px">
+        <span class="chk-group ${checked?'done':''}"><input type="checkbox" ${checked?'checked':''} onchange="updateCheck(${m.id},'${p}',this.checked);setTimeout(()=>openModelPage(${m.id}),300)"/> generated</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Build prompts
+  const promptsHtml=allPoses.map((p,i)=>`<div style="margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--ac2);margin-bottom:4px">${i+1}. ${p}</div>
+    <div class="pbox" style="font-size:9px;line-height:1.5"><button class="cpb" onclick="cpP(this)">Copy</button>${mkPrompt(m,p)}</div>
+  </div>`).join('');
+
+  document.getElementById('fbModal').innerHTML=`
+    <div class="fb-modal-overlay" onclick="if(event.target===this)closeFBModal()" style="align-items:flex-start;padding:20px;overflow-y:auto">
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:16px;width:100%;max-width:1100px;padding:24px;position:relative">
+        <button onclick="closeFBModal()" style="position:absolute;top:12px;left:12px;background:var(--sf3);border:1px solid var(--bd);color:var(--tx2);width:32px;height:32px;border-radius:8px;font-size:16px;cursor:pointer;z-index:5">✕</button>
+
+        <!-- Header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;padding-right:40px">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+              <span style="font-size:28px;font-weight:800;color:${m.cl}">${m.nm}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx3)">#${m.id}</span>
+              <span class="sz" style="background:${SC[m.sz]}20;color:${SC[m.sz]};border:1px solid ${SC[m.sz]}40;font-size:12px;padding:3px 10px">${m.sz}</span>
+            </div>
+            <div style="font-size:12px;color:var(--tx2)">${cap(m.bd)} · ${cap(m.sk)} · ${m.hr} · ${m.eth} · ${m.ey} eyes · ${m.st}</div>
+            <div style="font-size:11px;color:${m.cl};margin-top:4px;font-weight:600">${m.tr}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Progress</div>
+            <div style="font-size:24px;font-weight:800;color:${dc===6?'var(--gn)':'var(--ac)'}">${dc}/6</div>
+            <div style="font-size:9px;color:var(--tx3)">✅${fbc.approved} ❌${fbc.rejected}</div>
+          </div>
+        </div>
+
+        <!-- Measurements bar -->
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          ${[['Height',m.h+'cm'],['Weight',wt.w+'kg'],['Bust',m.bu+'cm'],['Waist',m.wa+'cm'],['Hips',m.hp+'cm'],['Inseam',(m.ins||'—')+'cm'],['Build',wt.d],['Assigned',st.assigned_to||'—']].map(([l,v])=>`<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--tx)">${v}</div><div style="font-size:8px;color:var(--tx3);margin-top:2px">${l}</div></div>`).join('')}
+        </div>
+
+        <!-- Images Grid -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--tx)">📸 Pose Images</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${imgGrid}</div>
+        </div>
+
+        <!-- All Prompts -->
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--tx)">📝 All Prompts</div>
+          ${promptsHtml}
+        </div>
+
+        <!-- ═══ INLINE QC SECTION ═══ -->
+        <div style="margin-top:24px;border-top:2px solid ${SC[m.sz]}40;padding-top:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span style="background:${SC[m.sz]};color:#fff;padding:4px 12px;border-radius:6px;font-size:13px;font-weight:800">🔍 QC</span>
+            <span style="font-size:14px;font-weight:700;color:var(--tx)">Quality Control — ${m.nm}</span>
+          </div>
+
+          <!-- Measurement Comparison: Model vs Expected -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:${SC[m.sz]};margin-bottom:10px">📏 Model Measurements</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;font-family:'JetBrains Mono',monospace">
+                ${[['Height',m.h+'cm'],['Weight','~'+wt.w+'kg'],['Bust',m.bu+'cm'],['Waist',m.wa+'cm'],['Hips',m.hp+'cm'],['W/H',m.hp?(m.wa/m.hp).toFixed(2):'—'],['Inseam',(m.ins||'—')+'cm'],['Build',wt.d]].map(([l,v])=>`<div style="padding:4px 6px;background:var(--bg);border-radius:4px;border-left:3px solid ${SC[m.sz]}"><span style="color:var(--tx3)">${l}:</span> <span style="color:var(--tx);font-weight:600">${v}</span></div>`).join('')}
+              </div>
+            </div>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--gn);margin-bottom:10px">✓ Expected Range (${m.sz})</div>
+              <div id="qcInlineExpected-${m.id}" style="font-size:10px;color:var(--tx2);line-height:1.8;font-family:'JetBrains Mono',monospace">
+                ${(()=>{
+                  const sm=MD.filter(x=>x.sz===m.sz);
+                  const hOk=m.h>=Math.min(...sm.map(x=>x.h))&&m.h<=Math.max(...sm.map(x=>x.h));
+                  const buOk=m.bu>=Math.min(...sm.map(x=>x.bu))&&m.bu<=Math.max(...sm.map(x=>x.bu));
+                  const waOk=m.wa>=Math.min(...sm.map(x=>x.wa))&&m.wa<=Math.max(...sm.map(x=>x.wa));
+                  const hpOk=m.hp>=Math.min(...sm.map(x=>x.hp))&&m.hp<=Math.max(...sm.map(x=>x.hp));
+                  return `
+                    <div>Height: ${Math.min(...sm.map(x=>x.h))}–${Math.max(...sm.map(x=>x.h))}cm <span style="color:${hOk?'var(--gn)':'var(--rs)'}">✓</span></div>
+                    <div>Bust: ${Math.min(...sm.map(x=>x.bu))}–${Math.max(...sm.map(x=>x.bu))}cm <span style="color:${buOk?'var(--gn)':'var(--rs)'}">✓</span></div>
+                    <div>Waist: ${Math.min(...sm.map(x=>x.wa))}–${Math.max(...sm.map(x=>x.wa))}cm <span style="color:${waOk?'var(--gn)':'var(--rs)'}">✓</span></div>
+                    <div>Hips: ${Math.min(...sm.map(x=>x.hp))}–${Math.max(...sm.map(x=>x.hp))}cm <span style="color:${hpOk?'var(--gn)':'var(--rs)'}">✓</span></div>
+                    <div>W/H: ${Math.min(...sm.map(x=>x.hp?(x.wa/x.hp):0)).toFixed(2)}–${Math.max(...sm.map(x=>x.hp?(x.wa/x.hp):0)).toFixed(2)}</div>
+                  `;
+                })()}
+              </div>
+            </div>
+          </div>
+
+          <!-- QC Checklist (compact 4-column) -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:var(--pk);margin-bottom:6px">😊 Facial</div>
+              ${['Symmetry','Eyes','Skin Texture','Features','Expression','Hairline'].map(c=>`<label style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--tx2);margin-bottom:3px;cursor:pointer"><input type="checkbox" class="qcInline-${m.id}" style="accent-color:${SC[m.sz]};width:12px;height:12px"/> ${c}</label>`).join('')}
+            </div>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:var(--cy);margin-bottom:6px">🏋️ Body</div>
+              ${['Posture','Muscle Tone','Body Fat %','Limb Symmetry','Joints','Balance'].map(c=>`<label style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--tx2);margin-bottom:3px;cursor:pointer"><input type="checkbox" class="qcInline-${m.id}" style="accent-color:${SC[m.sz]};width:12px;height:12px"/> ${c}</label>`).join('')}
+            </div>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:var(--am);margin-bottom:6px">📏 Measurements</div>
+              ${['Height/Weight','B/W/H Ratios','Inseam','Circumference','Anthropometric','Size Chart'].map(c=>`<label style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--tx2);margin-bottom:3px;cursor:pointer"><input type="checkbox" class="qcInline-${m.id}" style="accent-color:${SC[m.sz]};width:12px;height:12px"/> ${c}</label>`).join('')}
+            </div>
+            <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:var(--or);margin-bottom:6px">🔄 Consistency</div>
+              ${['Uniformity','Color Match','Texture','Assembly','Finish','Packaging'].map(c=>`<label style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--tx2);margin-bottom:3px;cursor:pointer"><input type="checkbox" class="qcInline-${m.id}" style="accent-color:${SC[m.sz]};width:12px;height:12px"/> ${c}</label>`).join('')}
+            </div>
+          </div>
+
+          <!-- Notes + Actions -->
+          <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+            <textarea id="qcInlineNotes-${m.id}" placeholder="QC notes..." style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:8px;border-radius:6px;font-size:11px;min-height:40px;resize:vertical;font-family:'Outfit',sans-serif"></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn" style="background:var(--gn);color:#fff;font-size:11px;padding:8px 16px" onclick="saveInlineQC(${m.id},'approved')">✅ Approve</button>
+              <button class="btn" style="background:var(--am);color:#000;font-size:11px;padding:8px 16px" onclick="saveInlineQC(${m.id},'needs_revision')">⚠️ Revision</button>
+              <button class="btn" style="background:var(--rs);color:#fff;font-size:11px;padding:8px 16px" onclick="saveInlineQC(${m.id},'rejected')">❌ Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── REAL-TIME SUBSCRIPTION ──
+function subscribeRealtime(){
+  if(!sb)return;
+  sb.channel('model_status_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_status'},payload=>{
+    if(payload.new){dbStatus[payload.new.id]=payload.new;updateProgress();fGal();renderDataTable();renderLiveGallery();
+      if(payload.new.updated_by&&payload.new.updated_by!==currentUser){
+        const m=MD.find(x=>x.id===payload.new.id);
+        toast(`${payload.new.updated_by} עדכן/ה את ${m?m.nm:'#'+payload.new.id}`);
+      }
+    }
+  }).subscribe();
+  sb.channel('model_images_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_images'},payload=>{
+    if(payload.new){dbImages[payload.new.model_id+'_'+payload.new.pose]=payload.new.image_url;fGal();renderLiveGallery();renderDataTable();
+      if(payload.new.uploaded_by&&payload.new.uploaded_by!==currentUser){toast(`${payload.new.uploaded_by} העלה/תה תמונה חדשה`);}
+    }
+    if(payload.eventType==='DELETE'&&payload.old){delete dbImages[payload.old.model_id+'_'+payload.old.pose];fGal();renderLiveGallery();renderDataTable();}
+  }).subscribe();
+  sb.channel('model_feedback_changes').on('postgres_changes',{event:'*',schema:'public',table:'model_feedback'},payload=>{
+    if(payload.new){dbFeedback[payload.new.model_id+'_'+payload.new.pose]=payload.new;fGal();renderDataTable();renderLiveGallery();
+      if(payload.new.created_by&&payload.new.created_by!==currentUser){
+        const m=MD.find(x=>x.id===payload.new.model_id);
+        toast(`${payload.new.created_by}: ${payload.new.status==='approved'?'✅':'❌'} ${m?m.nm:''} ${payload.new.pose}`);
+      }
+    }
+  }).subscribe();
+}
+
+// ── PROGRESS ──
+function updateProgress(){
+  const total=MD.length*6;let done=0;const byWorker={};
+  MD.forEach(m=>{const s=getStatus(m.id);const d=allPoses.filter(p=>s[poseDB[p]]).length;done+=d;
+    const w=s.assigned_to;if(w){if(!byWorker[w])byWorker[w]={done:0,total:0};byWorker[w].total+=6;byWorker[w].done+=d}});
+  const pct=total?Math.round(done/total*100):0;
+  let wHtml=Object.entries(byWorker).map(([w,v])=>`<span class="pb-stat" style="color:${w==='שלומית'?'var(--gn)':'var(--ac)'}">${w}: ${v.done}/${v.total}</span>`).join('');
+  document.getElementById('progressBar').innerHTML=`<div class="pb-label">התקדמות</div><div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-stat">${done}/${total} (${pct}%)</div>${wHtml}`;
+}
+
+// ── TABS ──
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('p-'+t.dataset.tab).classList.add('active')}));
+
+// ── GALLERY ──
+!function(){const fd=[{k:'sz',l:'מידה',v:SO},{k:'bd',l:'סוג גוף',v:['regular','curvy']},{k:'sk',l:'גוון עור',v:[...new Set(MD.map(m=>m.sk))]},{k:'eth',l:'אתניות',v:[...new Set(MD.map(m=>m.eth))]},{k:'hr',l:'שיער',v:[...new Set(MD.map(m=>m.hr))]}];
+document.getElementById('filters').innerHTML=fd.map(f=>`<div class="fg"><label>${f.l}</label><select data-f="${f.k}" onchange="fGal()"><option value="">הכל</option>${f.v.map(v=>`<option value="${v}">${v}</option>`).join('')}</select></div>`).join('')+
+  `<div class="fg"><label>אחראי/ת</label><select data-f="assign" onchange="fGal()"><option value="">הכל</option><option value="שלומית">שלומית</option><option value="שקד">שקד</option><option value="unassigned">לא משויך</option></select></div><div class="fg"><label>סטטוס</label><select data-f="status" onchange="fGal()"><option value="">הכל</option><option value="done">הושלם</option><option value="partial">הושלם חלקית</option><option value="none">לא התחיל</option></select></div>`}();
+
+function fGal(){const fl={};document.querySelectorAll('[data-f]').forEach(s=>{if(s.value)fl[s.dataset.f]=s.value});
+  rGal(MD.filter(m=>{const st=getStatus(m.id);const dc=getDoneCount(m.id);
+    for(let[k,v] of Object.entries(fl)){if(k==='assign'){const a=st.assigned_to||'';if(v==='unassigned'&&a)return false;if(v!=='unassigned'&&a!==v)return false}
+    else if(k==='status'){if(v==='done'&&dc<6)return false;if(v==='partial'&&(dc===0||dc===6))return false;if(v==='none'&&dc>0)return false}
+    else if(m[k]!==v)return false}return true}))}
+
+function rGal(l){l=l||MD;
+  // Group by size
+  let html = '';
+  SO.forEach(sz => {
+    const models = l.filter(m => m.sz === sz);
+    if (!models.length) return;
+    const c = SC[sz];
+    html += `<div style="grid-column:1/-1;margin-top:${html?'16px':'0'};padding:10px 16px;border-radius:10px;background:${c}18;border:1px solid ${c}35;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px;font-weight:900;color:${c}">${sz}</span><span style="font-size:11px;color:var(--tx2)">${models.length} models</span></div>
+      <span style="font-size:9px;color:${c};font-family:'JetBrains Mono',monospace">${models[0].bd==='curvy'?'curvy':'regular'} · ${Math.min(...models.map(m=>m.h))}–${Math.max(...models.map(m=>m.h))}cm</span>
+    </div>`;
+    models.forEach(m => {
+  const st=getStatus(m.id);const dc=getDoneCount(m.id);const fbc=getFBCounts(m.id);
+  const slots=allPoses.map(p=>{const imgKey=m.id+'_'+p;const img=dbImages[imgKey]||'';const fb=getFB(m.id,p);
+    const fbCls=fb?(fb.status==='approved'?'fb-slot-ok':fb.status==='rejected'?'fb-slot-no':''):'';
+    return `<div class="img-slot ${img?'has-img':''} ${fbCls}" id="slot-${imgKey}">
+      ${img?`<img src="${img}"/>
+        <div class="img-overlay">
+          <span class="io-btn ${fb&&fb.status==='approved'?'io-active-ok':''}" onclick="event.stopPropagation();saveFeedback(${m.id},'${p}','approved','')" title="מאושר">✅</span>
+          <span class="io-btn ${fb&&fb.status==='rejected'?'io-active-no':''}" onclick="event.stopPropagation();openFBModal(${m.id},'${p}')" title="צריך תיקון">❌</span>
+          <span class="io-btn" onclick="event.stopPropagation();openQCAForModel(${m.id})" title="QC" style="background:rgba(139,92,246,.6)">🔍</span>
+          <label class="io-btn io-replace" title="החלף">🔄<input type="file" accept="image/*" onchange="handleUpload(event,${m.id},'${p}')" style="display:none"/></label>
+          <span class="io-btn io-del" onclick="event.stopPropagation();confirmDelete(${m.id},'${p}')" title="מחק">🗑️</span>
+        </div>
+        ${fb&&fb.note?`<div class="fb-note" title="${fb.note}">💬 ${fb.note}</div>`:''}
+      `:`<div class="slot-label">${p}<br>📷</div><input type="file" accept="image/*" onchange="handleUpload(event,${m.id},'${p}')"/>`}
+    </div>`}).join('');
+  const checks=allPoses.map(p=>{const checked=st[poseDB[p]]?'checked':'';const cls=st[poseDB[p]]?'chk-group done':'chk-group';
+    return `<span class="${cls}"><input type="checkbox" ${checked} onchange="event.stopPropagation();updateCheck(${m.id},'${p}',this.checked)"/>${p.replace('Profile ','P').replace('Close-Up','CU')}</span>`}).join('');
+  html += `<div class="card ${sel.includes(m.id)?'selected':''}" data-mid="${m.id}" onclick="openModelPage(${m.id})" style="cursor:pointer;border-color:${c}50;border-width:2px">
+    <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${c}"></div>
+    <div class="card-top"><div><div class="card-name" style="color:${c}">${m.nm}</div><div class="card-id">#${m.id}${st.updated_by?` · עודכן ע"י ${st.updated_by}`:''}</div></div><span class="sz" style="background:${c};color:#fff;border:none;font-size:11px;padding:3px 10px">${m.sz}</span></div>
+    <div class="trait-badge" style="background:${c}15;color:${c};border:1px solid ${c}30">${m.tr.split(';')[0].split('—')[0].trim()}</div>
+    <div class="clbl">${m.cnt.toLocaleString()} uses · ${dc}/6 generated${fbc.approved?` · ✅${fbc.approved}`:''}${fbc.rejected?` · ❌${fbc.rejected}`:''}</div>
+    <div class="cbar"><div class="cbar-f" style="width:${(dc/6*100).toFixed(0)}%;background:${dc===6?'var(--gn)':c}"></div></div>
+    <div class="attrs"><span class="attr">${m.bd}</span><span class="attr">${m.sk}</span><span class="attr">${m.hr}</span><span class="attr">${m.eth}</span><span class="attr">${m.ey}</span><span class="attr">${m.st}</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${m.tg.map(t=>`<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:${c}15;color:${c};border:1px solid ${c}30;font-family:'JetBrains Mono',monospace">${t}</span>`).join('')}</div>
+    <div class="meas"><div><div class="mv">${m.h}</div><div class="ml">Height</div></div><div><div class="mv">${(WT[m.id]||{w:'?'}).w}kg</div><div class="ml">Weight</div></div><div><div class="mv">${m.bu}</div><div class="ml">Bust</div></div><div><div class="mv">${m.wa}</div><div class="ml">Waist</div></div><div><div class="mv">${m.hp}</div><div class="ml">Hips</div></div></div>
+    <div class="card-assign" onclick="event.stopPropagation()">
+      <div class="fg" style="flex-direction:row;align-items:center;gap:4px"><label>אחראי:</label><select onchange="updateAssign(${m.id},this.value)"><option value="">—</option><option value="שלומית" ${st.assigned_to==='שלומית'?'selected':''}>שלומית</option><option value="שקד" ${st.assigned_to==='שקד'?'selected':''}>שקד</option></select></div>
+      <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px" onclick="event.stopPropagation();openQCAForModel(${m.id})">🔍 QC</button>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-right:auto">${checks}</div>
+    </div>
+    <div class="img-area" onclick="event.stopPropagation()">${slots}</div>
+  </div>`;
+    });
+  });
+  document.getElementById('galleryGrid').innerHTML = html;
+}
+
+function handleUpload(e,mid,pose){const file=e.target.files[0];if(file)uploadImage(mid,pose,file)}
+function tSel(id){if(sel.includes(id))sel=sel.filter(s=>s!==id);else if(sel.length<2)sel.push(id);else{sel.shift();sel.push(id)}document.getElementById('ccnt').textContent=sel.length+'/2';document.getElementById('cbtn').disabled=sel.length!==2}
+function clearSel(){sel=[];document.getElementById('ccnt').textContent='0/2';document.getElementById('cbtn').disabled=true;fGal();document.getElementById('cmpR').innerHTML=''}
+
+// ── COMPARE ──
+function runCompare(){const a=MD.find(m=>m.id===sel[0]),b=MD.find(m=>m.id===sel[1]);if(!a||!b)return;
+const tf=['sz','bd','sk','hr','eth','st','ey','ag'],tl={sz:'Size',bd:'Body',sk:'Skin',hr:'Hair',eth:'Ethnicity',st:'Stature',ey:'Eyes',ag:'Age'};
+const nf=[{k:'h',l:'Height'},{k:'bu',l:'Bust'},{k:'wa',l:'Waist'},{k:'hp',l:'Hips'},{k:'ins',l:'Inseam'},{k:'cnt',l:'Usage'}];
+let h=`<div class="sil-wrap"><div class="sil"><svg viewBox="0 0 80 200" width="60" height="${Math.round(a.h*.68)}"><ellipse cx="40" cy="18" rx="12" ry="14" fill="${a.cl}" opacity=".4"/><ellipse cx="40" cy="60" rx="${a.bu/7.5}" ry="18" fill="${a.cl}" opacity=".25"/><ellipse cx="40" cy="80" rx="${a.wa/8.5}" ry="8" fill="${a.cl}" opacity=".18"/><ellipse cx="40" cy="110" rx="${a.hp/7.5}" ry="18" fill="${a.cl}" opacity=".22"/></svg><div class="sil-lbl">${a.nm} ${a.sz}</div></div><div class="sil"><svg viewBox="0 0 80 200" width="60" height="${Math.round(b.h*.68)}"><ellipse cx="40" cy="18" rx="12" ry="14" fill="${b.cl}" opacity=".4"/><ellipse cx="40" cy="60" rx="${b.bu/7.5}" ry="18" fill="${b.cl}" opacity=".25"/><ellipse cx="40" cy="80" rx="${b.wa/8.5}" ry="8" fill="${b.cl}" opacity=".18"/><ellipse cx="40" cy="110" rx="${b.hp/7.5}" ry="18" fill="${b.cl}" opacity=".22"/></svg><div class="sil-lbl">${b.nm} ${b.sz}</div></div></div>`;
+h+=`<div class="cv"><div class="cc"><h3 style="color:${a.cl}">${a.nm}</h3><div class="cn">#${a.id}</div>`;tf.forEach(f=>{const s=a[f]===b[f];h+=`<div class="dr"><span class="dl">${tl[f]}</span><span class="dv ${s?'ds':'dd'}">${a[f]}</span></div>`});
+h+=`</div><div class="cc"><h3 style="color:${b.cl}">${b.nm}</h3><div class="cn">#${b.id}</div>`;tf.forEach(f=>{const s=a[f]===b[f];h+=`<div class="dr"><span class="dl">${tl[f]}</span><span class="dv ${s?'ds':'dd'}">${b[f]}</span></div>`});
+h+=`</div></div><div style="margin-top:14px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px"><h4 style="color:var(--tx2);margin-bottom:8px;font-size:11px">Measurements</h4>`;
+nf.forEach(f=>{const va=a[f.k]||0,vb=b[f.k]||0,mx=Math.max(va,vb)||1,d=Math.abs(va-vb).toFixed(1);h+=`<div class="dr"><span class="dl">${f.l}</span><span class="dv" style="color:${a.cl};min-width:45px;text-align:center">${va}</span><div class="dbw"><div class="dba" style="width:${(va/mx*100).toFixed(1)}%;background:${a.cl};opacity:.5"></div><div class="dbb" style="width:${(vb/mx*100).toFixed(1)}%;background:${b.cl};opacity:.3"></div></div><span class="dv" style="color:${b.cl};min-width:45px;text-align:center">${vb}</span><span style="font-size:9px;color:${+d>0?'var(--rs)':'var(--gn)'};font-family:'JetBrains Mono';min-width:40px;text-align:center">Δ${d}</span></div>`});
+h+=`</div>`;document.getElementById('cmpR').innerHTML=h}
+
+// ── PROMPTS ──
+!function(){const s=document.getElementById('pms');MD.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=`${m.nm} #${m.id} — ${m.sz} ${m.bd}`;s.appendChild(o)})}();
+function genPrompts(){
+  const sv=document.getElementById('pms').value;
+  const assignF=document.getElementById('pmsAssign').value;
+  const statusF=document.getElementById('pmsStatus').value;
+  let list=sv==='all'?MD:MD.filter(m=>m.id==sv);
+  if(assignF)list=list.filter(m=>(getStatus(m.id).assigned_to||'')===assignF);
+  if(statusF==='done')list=list.filter(m=>getDoneCount(m.id)===6);
+  if(statusF==='partial')list=list.filter(m=>{const d=getDoneCount(m.id);return d>0&&d<6});
+  if(statusF==='none')list=list.filter(m=>getDoneCount(m.id)===0);
+  if(!list.length){document.getElementById('pCon').innerHTML=`<div style="text-align:center;padding:40px;color:var(--tx3)">אין מודלים תואמים לפילטר</div>`;return}
+document.getElementById('pCon').innerHTML=list.map(m=>{const wt=WT[m.id]||{w:'?',d:'?'};return`<div class="psec"><h3>${m.nm} — #${m.id}</h3><div class="psub">${m.sz} · ${m.bd} · ${m.sk} · ${m.hr} · ${m.eth} · ${m.h}cm · ~${wt.w}kg (${wt.d})</div><div class="pose-tabs" data-mid="${m.id}">${allPoses.map((p,i)=>`<span class="pose-tab ${i===0?'active':''}" onclick="swPose(${m.id},${i})">${p}</span>`).join('')}</div>${allPoses.map((p,i)=>`<div class="pbox" id="pb-${m.id}-${i}" style="display:${i===0?'block':'none'}"><button class="cpb" onclick="cpP(this)">Copy</button>${mkPrompt(m,p)}</div>`).join('')}</div>`}).join('')}
+genPrompts();
+function swPose(mid,idx){document.querySelectorAll(`[data-mid="${mid}"] .pose-tab`).forEach((t,i)=>t.classList.toggle('active',i===idx));allPoses.forEach((_,i)=>{const el=document.getElementById(`pb-${mid}-${i}`);if(el)el.style.display=i===idx?'block':'none'})}
+
+// ── STATS ──
+!function(){const tot=MD.reduce((s,m)=>s+m.cnt,0),avgH=(MD.reduce((s,m)=>s+m.h,0)/MD.length).toFixed(1);
+const r=MD.filter(m=>m.bd==='regular').length,c=MD.filter(m=>m.bd==='curvy').length;
+document.getElementById('statsStrip').innerHTML=`<div class="sc"><div class="scv">${MD.length}</div><div class="scl">Models</div></div><div class="sc"><div class="scv">${(tot/1000).toFixed(0)}K</div><div class="scl">Total Usage</div></div><div class="sc"><div class="scv">${avgH}</div><div class="scl">Avg Height</div></div><div class="sc"><div class="scv">${r}/${c}</div><div class="scl">Reg / Curvy</div></div><div class="sc"><div class="scv">${new Set(MD.map(m=>m.eth)).size}</div><div class="scl">Ethnicities</div></div><div class="sc"><div class="scv">204</div><div class="scl">AI Prompts</div></div>`}();
+
+// ── CHARTS ──
+const co={responsive:true,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit'}}}},scales:{x:{ticks:{color:'#555578'},grid:{color:'#0e0e14'}},y:{ticks:{color:'#555578'},grid:{color:'#0e0e14'}}}};
+!function(){const sc={};SO.forEach(s=>sc[s]=0);MD.forEach(m=>sc[m.sz]++);new Chart(document.getElementById('c1'),{type:'bar',data:{labels:SO,datasets:[{data:SO.map(s=>sc[s]||0),backgroundColor:SO.map(s=>SC[s]),borderRadius:4,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}}}});
+const ec={};MD.forEach(m=>ec[m.eth]=(ec[m.eth]||0)+1);new Chart(document.getElementById('c2'),{type:'doughnut',data:{labels:Object.keys(ec),datasets:[{data:Object.values(ec),backgroundColor:['#8b5cf6','#06b6d4','#10b981','#f59e0b','#f43f5e','#ec4899'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#8888a8',font:{family:'Outfit'},padding:6}}}}});
+const rb={},cb2={};SO.forEach(s=>{rb[s]=0;cb2[s]=0});MD.forEach(m=>m.bd==='regular'?rb[m.sz]++:cb2[m.sz]++);new Chart(document.getElementById('c3'),{type:'bar',data:{labels:SO,datasets:[{label:'Regular',data:SO.map(s=>rb[s]),backgroundColor:'#8b5cf6',borderRadius:3,borderSkipped:false},{label:'Curvy',data:SO.map(s=>cb2[s]),backgroundColor:'#f43f5e',borderRadius:3,borderSkipped:false}]},options:{...co,scales:{...co.scales,x:{...co.scales.x,stacked:true},y:{...co.scales.y,stacked:true}}}});
+new Chart(document.getElementById('c4'),{type:'scatter',data:{datasets:[{label:'Regular',data:MD.filter(m=>m.bd==='regular').map(m=>({x:m.h,y:m.bu})),backgroundColor:'rgba(139,92,246,.5)',pointRadius:5},{label:'Curvy',data:MD.filter(m=>m.bd==='curvy').map(m=>({x:m.h,y:m.bu})),backgroundColor:'rgba(244,63,94,.5)',pointRadius:5}]},options:{...co,scales:{x:{...co.scales.x,title:{display:true,text:'Height',color:'#555578'}},y:{...co.scales.y,title:{display:true,text:'Bust',color:'#555578'}}}}});
+const skc={};MD.forEach(m=>skc[m.sk]=(skc[m.sk]||0)+1);const skCols={'olive':'#b8a070','fair':'#f0d8c0','dark brown':'#6b4226','very fair':'#fae8d8','light brown':'#c8a070','brown':'#8b6a40'};new Chart(document.getElementById('c5'),{type:'bar',data:{labels:Object.keys(skc),datasets:[{data:Object.values(skc),backgroundColor:Object.keys(skc).map(k=>skCols[k]||'#888'),borderRadius:4,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}},indexAxis:'y'}});
+const srt=[...MD].sort((a,b)=>b.cnt-a.cnt).slice(0,15);new Chart(document.getElementById('c6'),{type:'bar',data:{labels:srt.map(m=>m.nm),datasets:[{data:srt.map(m=>m.cnt),backgroundColor:srt.map(m=>m.cl+'88'),borderColor:srt.map(m=>m.cl),borderWidth:1,borderRadius:3,borderSkipped:false}]},options:{...co,plugins:{legend:{display:false}},indexAxis:'y'}})}();
+
+// ── PROFILES ──
+// Profiles tab removed — traits now shown in gallery cards
+// document.getElementById('traitsGrid') rendering removed
+
+// ── QC — TECHNICAL ILLUSTRATIONS (Premium) ──
+function drawBodySVG(bust,waist,hips,height,color,label,weight){
+  const sc=0.14;
+  const bR=bust*sc, wR=waist*sc, hR=hips*sc;
+  const svgW=Math.max(70, hR*2+20);
+  const cx=svgW/2;
+  const headR=7;const neckY=headR*2+6;const bustY=neckY+18;const waistY=bustY+16;const hipY=waistY+16;const legEnd=height*0.42;
+  return `<svg viewBox="0 0 ${svgW} ${legEnd+28}" width="${Math.max(65,svgW*0.7)}" height="${Math.min(legEnd+28,160)}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g_${label}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".4"/><stop offset="100%" stop-color="${color}" stop-opacity=".08"/></linearGradient></defs>
+    <ellipse cx="${cx}" cy="${headR+2}" rx="${headR}" ry="${headR+1}" fill="${color}" opacity=".3"/>
+    <path d="M${cx},${neckY} C${cx},${neckY} ${cx-bR},${bustY-4} ${cx-bR},${bustY} L${cx-wR},${waistY} L${cx-hR},${hipY} L${cx-hR*.6},${legEnd+8} L${cx-hR*.3},${legEnd+8} L${cx},${hipY+8} L${cx+hR*.3},${legEnd+8} L${cx+hR*.6},${legEnd+8} L${cx+hR},${hipY} L${cx+wR},${waistY} L${cx+bR},${bustY} C${cx+bR},${bustY-4} ${cx},${neckY} ${cx},${neckY}Z" fill="url(#g_${label})" stroke="${color}" stroke-width=".6" stroke-opacity=".3"/>
+    <line x1="${cx-bR-4}" y1="${bustY}" x2="${cx+bR+4}" y2="${bustY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <line x1="${cx-wR-4}" y1="${waistY}" x2="${cx+wR+4}" y2="${waistY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <line x1="${cx-hR-4}" y1="${hipY}" x2="${cx+hR+4}" y2="${hipY}" stroke="${color}" stroke-width=".5" stroke-dasharray="2,2" opacity=".5"/>
+    <text x="${cx+bR+6}" y="${bustY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">B</text>
+    <text x="${cx+wR+6}" y="${waistY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">W</text>
+    <text x="${cx+hR+6}" y="${hipY+3}" fill="${color}" font-size="5" font-family="JetBrains Mono" opacity=".6">H</text>
+    <text x="${cx}" y="${legEnd+24}" text-anchor="middle" fill="${color}" font-size="10" font-family="JetBrains Mono" font-weight="800">${label}</text>
+  </svg>`;
+}
+
+function renderTechIllustrations(){
+  const avgs={};const avgW={};
+  SO.forEach(s=>{
+    const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;
+    avgs[s]={bu:+(ms.reduce((a,m)=>a+m.bu,0)/ms.length).toFixed(1),wa:+(ms.reduce((a,m)=>a+m.wa,0)/ms.length).toFixed(1),hp:+(ms.reduce((a,m)=>a+m.hp,0)/ms.length).toFixed(1),h:+(ms.reduce((a,m)=>a+m.h,0)/ms.length).toFixed(0),n:ms.length};
+    avgW[s]=Math.round(ms.reduce((a,m)=>a+(WT[m.id]||{w:60}).w,0)/ms.length);
+  });
+
+  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="width:4px;height:24px;border-radius:2px;background:var(--ac)"></div>
+      <div><div style="font-size:15px;font-weight:800;color:var(--tx)">Body Silhouette Comparison</div>
+      <div style="font-size:10px;color:var(--tx3)">Average body proportions per size · Dashed lines show bust, waist, hip measurement points</div></div>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:flex-end;gap:6px;flex-wrap:wrap;padding:16px 0;background:var(--sf2);border-radius:12px;border:1px solid var(--bd)">`;
+
+  SO.filter(s=>avgs[s]).forEach(s=>{
+    const a=avgs[s];
+    html+=`<div style="text-align:center;padding:8px 4px">
+      ${drawBodySVG(a.bu,a.wa,a.hp,a.h,SC[s],s,avgW[s])}
+      <div style="margin-top:6px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:6px 8px">
+        <div style="font-size:9px;color:var(--tx);line-height:1.5;font-family:'JetBrains Mono',monospace">
+          <span style="color:${SC[s]}">${a.h}cm</span> · <span style="color:${SC[s]}">${avgW[s]}kg</span><br>
+          B<span style="color:var(--tx2)">${a.bu}</span> W<span style="color:var(--tx2)">${a.wa}</span> H<span style="color:var(--tx2)">${a.hp}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html+=`</div>
+    <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--sf2);border-radius:10px;padding:16px;border:1px solid var(--bd)">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📏</span> Measurement Guide</div>
+        <div style="font-size:11px;color:var(--tx2);line-height:1.8">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--acd);color:var(--ac2);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">BUST</span> Widest point around chest, under arms</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(245,158,11,.1);color:var(--am);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">WAIST</span> Narrowest point of torso, above navel</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">HIPS</span> Widest point around buttocks/hip bones</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(6,182,212,.1);color:var(--cy);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">W/H</span> Waist ÷ Hips ratio (lower = more curves)</div>
+        </div>
+      </div>
+      <div style="background:var(--sf2);border-radius:10px;padding:16px;border:1px solid var(--bd)">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:10px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">⚠️</span> QC Red Flags</div>
+        <div style="font-size:11px;color:var(--tx2);line-height:1.8">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">FAIL</span> Waist wider than hips (W > H)</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--rsd);color:var(--rs);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">FAIL</span> Waist > Bust on regular build</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:var(--gnd);color:var(--gn);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">OK</span> W/H &lt; 0.75 = strong hourglass/pear</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="background:rgba(245,158,11,.1);color:var(--am);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;min-width:45px;text-align:center">NOTE</span> W/H &gt; 0.90 = straight/apple shape</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  const tiEl=document.getElementById('techIllustrations');
+  if(tiEl) tiEl.innerHTML=html;
+
+  // Size comparison chart
+  const szLabels=SO.filter(s=>avgs[s]);
+  const cSzEl=document.getElementById('cSizeCompare');
+  if(cSzEl) new Chart(cSzEl,{
+    type:'bar',
+    data:{labels:szLabels,datasets:[
+      {label:'Bust (cm)',data:szLabels.map(s=>avgs[s].bu),backgroundColor:'#8b5cf650',borderColor:'#8b5cf6',borderWidth:2,borderRadius:4},
+      {label:'Waist (cm)',data:szLabels.map(s=>avgs[s].wa),backgroundColor:'#f59e0b50',borderColor:'#f59e0b',borderWidth:2,borderRadius:4},
+      {label:'Hips (cm)',data:szLabels.map(s=>avgs[s].hp),backgroundColor:'#f43f5e50',borderColor:'#f43f5e',borderWidth:2,borderRadius:4},
+      {label:'Weight (kg)',data:szLabels.map(s=>avgW[s]),backgroundColor:'#06b6d450',borderColor:'#06b6d4',borderWidth:2,borderRadius:4,yAxisID:'y2'}
+    ]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#8888a8',font:{family:'Outfit',size:11},padding:16}}},scales:{x:{ticks:{color:'#8888a8',font:{size:12,weight:'bold'}},grid:{color:'#15151e'}},y:{ticks:{color:'#555578'},grid:{color:'#15151e'},title:{display:true,text:'cm',color:'#555578'}},y2:{position:'right',ticks:{color:'#06b6d4'},grid:{display:false},title:{display:true,text:'kg',color:'#06b6d4'}}}}
+  });
+}
+
+// ── QC TABLE (Premium) ──
+!function(){
+  const sizeRanges={};
+  SO.forEach(s=>{const ms=MD.filter(m=>m.sz===s);if(!ms.length)return;
+    const ws=ms.map(m=>(WT[m.id]||{w:0}).w);
+    sizeRanges[s]={count:ms.length,hMin:Math.min(...ms.map(m=>m.h)),hMax:Math.max(...ms.map(m=>m.h)),buMin:Math.min(...ms.map(m=>m.bu)),buMax:Math.max(...ms.map(m=>m.bu)),waMin:Math.min(...ms.map(m=>m.wa)),waMax:Math.max(...ms.map(m=>m.wa)),hpMin:Math.min(...ms.map(m=>m.hp)),hpMax:Math.max(...ms.map(m=>m.hp)),wMin:Math.min(...ws),wMax:Math.max(...ws)}});
+
+  const srEl=document.getElementById('sizeRef');
+  if(srEl) srEl.innerHTML=`<div class="size-ref"><h4>📐 Size Range Reference</h4><div class="sr-grid">${SO.filter(s=>sizeRanges[s]).map(s=>{const r=sizeRanges[s];return`<div class="sr-card" style="border-top:3px solid ${SC[s]}"><div class="sr-sz" style="color:${SC[s]}">${s}</div><div class="sr-range"><strong style="color:var(--tx)">${r.count}</strong> models<br>Height: ${r.hMin}–${r.hMax} cm<br>Bust: ${r.buMin}–${r.buMax}<br>Waist: ${r.waMin}–${r.waMax}<br>Hips: ${r.hpMin}–${r.hpMax}</div><div class="sr-weight">⚖️ ${r.wMin}–${r.wMax} kg</div></div>`}).join('')}</div></div>`;
+
+  renderTechIllustrations();
+
+  // Build premium QC table with size group dividers
+  const sorted=[...MD].sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);return ai!==bi?ai-bi:a.h-b.h});
+  let h=`<div class="qc-wrap"><table><thead><tr>
+    <th style="text-align:left;padding-left:14px">Model</th><th>ID</th><th>Size</th><th>Body</th><th>Weight</th>
+    <th>Height</th><th>Bust</th><th>Waist</th><th>Hips</th><th>Inseam</th>
+    <th>W/H Ratio</th><th>B−W</th><th>H−W</th><th>Shape</th><th>QC</th>
+  </tr></thead><tbody>`;
+
+  let lastSz='';
+  sorted.forEach(m=>{
+    // Size group divider
+    if(m.sz!==lastSz){lastSz=m.sz;const r=sizeRanges[m.sz];
+      h+=`<tr class="qc-size-divider"><td colspan="15" style="color:${SC[m.sz]}">▎ ${m.sz} — ${r?r.count:0} models · ${r?r.wMin+'–'+r.wMax+'kg':''}</td></tr>`}
+
+    const wt=WT[m.id]||{w:'?',d:'?'};
+    const whr=m.hp?(m.wa/m.hp).toFixed(2):'—';
+    const bwD=(m.bu-m.wa).toFixed(1);
+    const hwD=(m.hp-m.wa).toFixed(1);
+    const whrN=parseFloat(whr);
+    const whrCls=whrN<0.75?'qc-ratio-good':whrN>0.90?'qc-ratio-warn':'';
+    const shape=whrN<0.72?'Hourglass':whrN<0.78?'Pear':whrN<0.85?'Average':whrN<0.92?'Straight':'Apple';
+
+    const issues=[];
+    if(m.wa>m.hp)issues.push('W>H');
+    if(m.bu<70)issues.push('Low bust');
+    if(m.wa>m.bu&&m.bd==='regular')issues.push('W>B');
+    const rowCls=issues.length?'qc-row-fail':'';
+
+    h+=`<tr class="${rowCls}">
+      <td class="qc-name" style="color:var(--tx)">${m.nm}</td>
+      <td style="color:var(--tx3)">#${m.id}</td>
+      <td><span style="color:${SC[m.sz]};font-weight:800;font-size:11px">${m.sz}</span></td>
+      <td style="color:var(--tx2)">${m.bd}</td>
+      <td><span style="color:var(--cy);font-weight:600">${wt.w}kg</span><span class="qc-meas-label">${wt.d}</span></td>
+      <td class="qc-meas">${m.h}</td>
+      <td class="qc-meas">${m.bu}</td>
+      <td class="qc-meas">${m.wa}</td>
+      <td class="qc-meas">${m.hp}</td>
+      <td style="color:var(--tx2)">${m.ins??'—'}</td>
+      <td><span class="qc-ratio ${whrCls}">${whr}</span></td>
+      <td style="color:${parseFloat(bwD)>0?'var(--gn)':'var(--rs)'}">${bwD>0?'+':''}${bwD}</td>
+      <td style="color:${parseFloat(hwD)>0?'var(--gn)':'var(--rs)'}">${hwD>0?'+':''}${hwD}</td>
+      <td style="color:var(--tx2);font-family:'Outfit',sans-serif;font-size:9px">${shape}</td>
+      <td class="${issues.length?'qc-fail':'qc-pass'}">${issues.length?issues.join(', '):'✓ Pass'}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  const qcTblEl=document.getElementById('qcTableSection');
+  if(qcTblEl) qcTblEl.innerHTML=h;
+}();
+
+// ── LIVE GALLERY (Overview synced with uploaded images) ──
+function renderLiveGallery(){
+  const modelsWithImages=MD.filter(m=>allPoses.some(p=>dbImages[m.id+'_'+p]));
+  const modelsWithout=MD.filter(m=>!allPoses.some(p=>dbImages[m.id+'_'+p]));
+  const doneModels=MD.filter(m=>getDoneCount(m.id)===6);
+
+  if(!modelsWithImages.length&&!doneModels.length){
+    document.getElementById('liveGallery').innerHTML=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center">
+      <div style="font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:4px">📸 Generated Models Gallery</div>
+      <div style="font-size:11px;color:var(--tx3)">עדיין לא הועלו תמונות — הן יופיעו כאן אוטומטית כשתעלו מהגלריה</div>
+    </div>`;
+    return;
+  }
+
+  let html=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><span style="font-size:14px;font-weight:700;color:var(--ac2)">📸 Generated Models</span>
+      <span style="font-size:10px;color:var(--tx3);margin-right:8px">${modelsWithImages.length} with images · ${doneModels.length} complete</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">`;
+
+  MD.forEach(m=>{
+    const frontImg=dbImages[m.id+'_Front']||dbImages[m.id+'_Close-Up']||dbImages[m.id+'_45L']||dbImages[m.id+'_45R']||null;
+    const dc=getDoneCount(m.id);
+    const hasAny=allPoses.some(p=>dbImages[m.id+'_'+p]);
+    const szC=SC[m.sz]||'var(--bd)';
+
+    html+=`<div style="background:${szC}10;border:2px solid ${dc===6?'var(--gn)':hasAny?szC+'80':szC+'30'};border-radius:10px;overflow:hidden;transition:all .2s;cursor:pointer" onclick="openModelPage(${m.id})">
+      <div style="aspect-ratio:3/4;background:var(--sf3);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:24px;opacity:.15">👤</div>`}
+      </div>
+      <div style="padding:8px;text-align:center;background:${szC}12">
+        <div style="font-size:11px;font-weight:700;color:${szC}">${m.nm}</div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace"><span style="background:${szC};color:#fff;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:800">${m.sz}</span> · ${dc}/6</div>
+        <div style="height:3px;border-radius:2px;background:var(--sf3);margin-top:4px;overflow:hidden"><div style="height:100%;width:${(dc/6*100).toFixed(0)}%;background:${dc===6?'var(--gn)':szC};border-radius:2px"></div></div>
+      </div>
+    </div>`;
+  });
+
+  html+=`</div></div>`;
+  document.getElementById('liveGallery').innerHTML=html;
+}
+
+// ── TABLE (dynamic — synced with Supabase state) ──
+function renderDataTable(){
+  const cols=[{k:'nm',l:'Name'},{k:'id',l:'ID'},{k:'_assign',l:'Assigned To'},{k:'_status',l:'Status'},{k:'_done',l:'Progress'},{k:'_review',l:'QC Review'},{k:'sz',l:'Size'},{k:'h',l:'Height'},{k:'bd',l:'Body'},{k:'sk',l:'Skin'},{k:'hr',l:'Hair'},{k:'eth',l:'Eth'},{k:'ey',l:'Eyes'},{k:'bu',l:'Bust'},{k:'wa',l:'Waist'},{k:'hp',l:'Hips'},{k:'ins',l:'Inseam'},{k:'cnt',l:'Usage'},{k:'tr',l:'Trait'}];
+  let h='<thead><tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr></thead><tbody>';
+  MD.forEach(m=>{
+    const st=getStatus(m.id);
+    const dc=getDoneCount(m.id);
+    const isDone=dc===6;
+    const assignColor=st.assigned_to==='שלומית'?'var(--gn)':st.assigned_to==='שקד'?'var(--ac)':'var(--tx3)';
+    const rowBg=isDone?'rgba(16,185,129,.06)':'';
+    h+=`<tr style="background:${rowBg}">`;
+    cols.forEach(c=>{
+      let v;
+      if(c.k==='_assign') v=`<span style="color:${assignColor};font-weight:600">${st.assigned_to||'—'}</span>`;
+      else if(c.k==='_status') v=isDone?`<span style="color:var(--gn);font-weight:700">✅ הושלם</span>`:dc>0?`<span style="color:var(--am);font-weight:600">🔄 הושלם חלקית ${dc}/6</span>`:`<span style="color:var(--tx3)">⬜ לא התחיל</span>`;
+      else if(c.k==='_done') v=`<div style="width:60px;height:5px;background:var(--sf3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle"><div style="height:100%;width:${(dc/6*100).toFixed(0)}%;background:${isDone?'var(--gn)':'var(--ac)'};border-radius:3px"></div></div> <span style="font-size:9px;color:var(--tx3)">${dc}/6</span>`;
+      else if(c.k==='_review'){const fbc=getFBCounts(m.id);const allApproved=fbc.approved===6;v=allApproved?`<span style="color:var(--gn);font-weight:700">✅ כל 6 מאושרות</span>`:fbc.approved||fbc.rejected?`<span style="color:var(--gn)">✅${fbc.approved}</span> <span style="color:var(--rs)">❌${fbc.rejected}</span> <span style="color:var(--tx3)">⏳${6-fbc.approved-fbc.rejected}</span>`:`<span style="color:var(--tx3)">—</span>`}
+      else if(c.k==='cnt') v=m[c.k].toLocaleString();
+      else if(c.k==='id') v='#'+m[c.k];
+      else v=m[c.k]??'—';
+      h+=`<td>${v}</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody>';
+  document.getElementById('dataTable').innerHTML=h;
+}
+renderDataTable();
+
+// ── BOOT ──
+// ═══════════════════════════════════════════════════
+// ═══ SIZE REFERENCE TAB — Sub-tab switching & data ═══
+// ═══════════════════════════════════════════════════
+function switchSizeView(viewName, btn) {
+  document.querySelectorAll('.sr-view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sr-subtab').forEach(el => el.classList.remove('active'));
+  const view = document.getElementById('srView-' + viewName);
+  if (view) view.classList.add('active');
+  if (btn) btn.classList.add('active');
+  loadSizeSpecs(viewName);
+}
+
+async function loadSizeSpecs(viewName) {
+  const specsDiv = document.getElementById('srSpecs-' + viewName);
+  if (!specsDiv) return;
+
+  // Try loading from Supabase
+  let data = null;
+  if (sb) {
+    try {
+      const resp = await sb.from('size_guidelines').select('*').order('size_id');
+      if (!resp.error && resp.data && resp.data.length > 0) data = resp.data;
+    } catch(e) { console.warn('size_guidelines not available:', e); }
+  }
+
+  // Fallback: build from local MD data
+  if (!data) {
+    data = SO.map(s => {
+      const ms = MD.filter(m => m.sz === s);
+      if (!ms.length) return null;
+      const avgBu = +(ms.reduce((a,m) => a+m.bu, 0)/ms.length).toFixed(1);
+      const avgWa = +(ms.reduce((a,m) => a+m.wa, 0)/ms.length).toFixed(1);
+      const avgHp = +(ms.reduce((a,m) => a+m.hp, 0)/ms.length).toFixed(1);
+      const avgH = Math.round(ms.reduce((a,m) => a+m.h, 0)/ms.length);
+      const avgW = Math.round(ms.reduce((a,m) => a+(WT[m.id]||{w:60}).w, 0)/ms.length);
+      return {
+        size_id: s, size_label: s,
+        height_min: Math.min(...ms.map(m=>m.h)), height_max: Math.max(...ms.map(m=>m.h)),
+        weight_min: Math.min(...ms.map(m=>(WT[m.id]||{w:60}).w)), weight_max: Math.max(...ms.map(m=>(WT[m.id]||{w:60}).w)),
+        bust_min: Math.min(...ms.map(m=>m.bu)), bust_max: Math.max(...ms.map(m=>m.bu)),
+        waist_min: Math.min(...ms.map(m=>m.wa)), waist_max: Math.max(...ms.map(m=>m.wa)),
+        hip_min: Math.min(...ms.map(m=>m.hp)), hip_max: Math.max(...ms.map(m=>m.hp)),
+        wh_ratio_min: +(Math.min(...ms.map(m=>m.hp?m.wa/m.hp:0))).toFixed(2),
+        wh_ratio_max: +(Math.max(...ms.map(m=>m.hp?m.wa/m.hp:0))).toFixed(2),
+        muscle_definition_percent: s==='XS'?70:s==='S'?25:s==='M'?10:s==='L'?5:0,
+        body_fat_percent_min: s==='XS'?14:s==='S'?18:s==='M'?22:s==='L'?28:32,
+        body_fat_percent_max: s==='XS'?18:s==='S'?22:s==='M'?26:s==='L'?34:40,
+        shoulder_width_cm: s==='XS'?36:s==='S'?37:s==='M'?38:s==='L'?40:42,
+        facial_structure_description: 'Angular/defined',
+        cheekbone_description: s==='XS'||s==='S'?'High, prominent':'Softened',
+        jawline_description: s==='XS'||s==='S'?'Sharp, defined':'Rounded, soft',
+        lips_description: 'Natural fullness',
+        face_proportions: 'Balanced',
+        hip_projection_description: s==='XS'||s==='S'?'Minimal':'Pronounced',
+        body_composition_summary: `Typical ${s} body composition`,
+        skin_appearance: 'Smooth, even tone'
+      };
+    }).filter(Boolean);
+  }
+
+  let html = '<table><thead><tr><th>Size</th>';
+  if (viewName === 'silhouettes') {
+    html += '<th>Height (cm)</th><th>Weight (kg)</th><th>Bust</th><th>Waist</th><th>Hips</th><th>W/H Ratio</th>';
+  } else if (viewName === 'measurements') {
+    html += '<th>Height (cm)</th><th>Weight (kg)</th><th>Bust (cm)</th><th>Waist (cm)</th><th>Hip (cm)</th><th>W/H Ratio</th>';
+  } else if (viewName === 'bodyComposition') {
+    html += '<th>Muscle Def %</th><th>Body Fat %</th><th>Hip Projection</th><th>Shoulder (cm)</th><th>Summary</th>';
+  } else if (viewName === 'facialFeatures') {
+    html += '<th>Face Structure</th><th>Cheekbones</th><th>Jawline</th><th>Lips</th><th>Proportions</th>';
+  }
+  html += '</tr></thead><tbody>';
+
+  data.forEach(sz => {
+    const szColor = SC[sz.size_id] || 'var(--tx)';
+    html += `<tr><td><span style="color:${szColor};font-weight:800">${sz.size_label || sz.size_id}</span></td>`;
+    if (viewName === 'silhouettes' || viewName === 'measurements') {
+      html += `<td>${sz.height_min}–${sz.height_max}</td>`;
+      html += `<td>${sz.weight_min}–${sz.weight_max}</td>`;
+      html += `<td>${sz.bust_min}–${sz.bust_max}</td>`;
+      html += `<td>${sz.waist_min}–${sz.waist_max}</td>`;
+      html += `<td>${sz.hip_min}–${sz.hip_max}</td>`;
+      html += `<td>${sz.wh_ratio_min}–${sz.wh_ratio_max}</td>`;
+    } else if (viewName === 'bodyComposition') {
+      html += `<td>${sz.muscle_definition_percent || '—'}%</td>`;
+      html += `<td>${sz.body_fat_percent_min || '—'}–${sz.body_fat_percent_max || '—'}%</td>`;
+      html += `<td>${sz.hip_projection_description || '—'}</td>`;
+      html += `<td>${sz.shoulder_width_cm || '—'}</td>`;
+      html += `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${(sz.body_composition_summary||'—').substring(0,60)}${(sz.body_composition_summary||'').length>60?'...':''}</td>`;
+    } else if (viewName === 'facialFeatures') {
+      html += `<td>${(sz.facial_structure_description||'—').substring(0,35)}${(sz.facial_structure_description||'').length>35?'...':''}</td>`;
+      html += `<td>${sz.cheekbone_description || '—'}</td>`;
+      html += `<td>${sz.jawline_description || '—'}</td>`;
+      html += `<td>${sz.lips_description || '—'}</td>`;
+      html += `<td>${sz.face_proportions || '—'}</td>`;
+    }
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  specsDiv.innerHTML = html;
+}
+
+// Load initial silhouettes view
+// Size reference specs for technical drawings
+const SR_SPECS = {
+  XS: {h:160,bu:82,wa:64,hp:90,wh:0.71},
+  S: {h:162,bu:86,wa:68,hp:90,wh:0.76},
+  M: {h:164,bu:88,wa:70,hp:96,wh:0.73},
+  L: {h:176,bu:92,wa:74,hp:100,wh:0.74},
+  XL: {h:178,bu:96,wa:76,hp:106,wh:0.72},
+  '2XL': {h:180,bu:100,wa:80,hp:116,wh:0.69},
+  '3XL': {h:188,bu:104,wa:94,hp:120,wh:0.78},
+  '4XL': {h:190,bu:106,wa:103,hp:126,wh:0.82}
+};
+
+function buildTechDrawingSVG(size) {
+  const sp = SR_SPECS[size];
+  const c = SC[size];
+  const cx = 110;
+  // Scale body width from measurements
+  const bR = sp.bu * 0.12;
+  const wR = sp.wa * 0.12;
+  const hR = sp.hp * 0.12;
+  const shR = bR + 1.5;
+  // Vertical landmarks
+  const headY=8, headH=16, chinY=headY+headH*2, neckY=chinY+5;
+  const shoulderY=neckY+8, bustY=shoulderY+22, waistY=bustY+24, hipY=waistY+22;
+  const crotchY=hipY+14, kneeY=crotchY+46, ankleY=kneeY+46, footY=ankleY+6;
+  const thR=hR*0.48, kR=hR*0.26, aR=hR*0.14;
+  // Height scale position
+  const hx = 14;
+
+  return `<svg viewBox="0 0 220 ${footY+30}" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-height:360px">
+    <!-- Grid background -->
+    <defs>
+      <pattern id="grid_${size}" width="10" height="10" patternUnits="userSpaceOnUse">
+        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#ffffff" stroke-width="0.15" opacity=".1"/>
+      </pattern>
+    </defs>
+    <rect width="220" height="${footY+30}" fill="url(#grid_${size})"/>
+
+    <!-- Height ruler (left) -->
+    <line x1="${hx}" y1="${headY}" x2="${hx}" y2="${footY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <line x1="${hx-5}" y1="${headY}" x2="${hx+5}" y2="${headY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <line x1="${hx-5}" y1="${footY}" x2="${hx+5}" y2="${footY}" stroke="${c}" stroke-width="1" opacity=".6"/>
+    <path d="M${hx},${headY} L${hx-3},${headY+5} L${hx+3},${headY+5} Z" fill="${c}" opacity=".5"/>
+    <path d="M${hx},${footY} L${hx-3},${footY-5} L${hx+3},${footY-5} Z" fill="${c}" opacity=".5"/>
+    <text x="${hx}" y="${footY+16}" text-anchor="middle" fill="${c}" font-size="9" font-weight="800" font-family="JetBrains Mono">${sp.h}cm</text>
+    <text x="${hx}" y="${footY+24}" text-anchor="middle" fill="#888" font-size="6" font-family="JetBrains Mono">Height</text>
+
+    <!-- Head -->
+    <ellipse cx="${cx}" cy="${headY+headH}" rx="10" ry="${headH}" fill="none" stroke="#ccc" stroke-width="1.2"/>
+    <!-- Neck -->
+    <line x1="${cx-3}" y1="${chinY}" x2="${cx-4}" y2="${neckY}" stroke="#ccc" stroke-width="0.8"/>
+    <line x1="${cx+3}" y1="${chinY}" x2="${cx+4}" y2="${neckY}" stroke="#ccc" stroke-width="0.8"/>
+
+    <!-- Body outline -->
+    <path d="
+      M${cx-4},${neckY}
+      C${cx-shR*0.5},${neckY} ${cx-shR},${shoulderY-3} ${cx-shR},${shoulderY}
+      C${cx-shR},${shoulderY+6} ${cx-bR-1},${bustY-6} ${cx-bR},${bustY}
+      C${cx-bR+1},${bustY+8} ${cx-wR-1},${waistY-5} ${cx-wR},${waistY}
+      C${cx-wR-1},${waistY+6} ${cx-hR},${hipY-5} ${cx-hR},${hipY}
+      C${cx-hR},${hipY+5} ${cx-thR-1},${crotchY-3} ${cx-thR},${crotchY}
+      L${cx-kR},${kneeY} L${cx-aR},${ankleY} L${cx-aR-2},${footY}
+      M${cx+4},${neckY}
+      C${cx+shR*0.5},${neckY} ${cx+shR},${shoulderY-3} ${cx+shR},${shoulderY}
+      C${cx+shR},${shoulderY+6} ${cx+bR+1},${bustY-6} ${cx+bR},${bustY}
+      C${cx+bR-1},${bustY+8} ${cx+wR+1},${waistY-5} ${cx+wR},${waistY}
+      C${cx+wR+1},${waistY+6} ${cx+hR},${hipY-5} ${cx+hR},${hipY}
+      C${cx+hR},${hipY+5} ${cx+thR+1},${crotchY-3} ${cx+thR},${crotchY}
+      L${cx+kR},${kneeY} L${cx+aR},${ankleY} L${cx+aR+2},${footY}
+    " fill="none" stroke="#ccc" stroke-width="1.2" stroke-linecap="round"/>
+
+    <!-- Bust measurement arrow -->
+    <line x1="${cx+bR+4}" y1="${bustY}" x2="${cx+bR+30}" y2="${bustY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${bustY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.bu}cm</text>
+    <text x="${cx+bR+32}" y="${bustY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Bust</text>
+    <!-- Bust arrow tips -->
+    <line x1="${cx-bR}" y1="${bustY}" x2="${cx+bR}" y2="${bustY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-bR}" cy="${bustY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+bR}" cy="${bustY}" r="1.5" fill="${c}" opacity=".5"/>
+
+    <!-- Waist measurement arrow -->
+    <line x1="${cx+wR+4}" y1="${waistY}" x2="${cx+bR+30}" y2="${waistY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${waistY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.wa}cm</text>
+    <text x="${cx+bR+32}" y="${waistY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Waist</text>
+    <line x1="${cx-wR}" y1="${waistY}" x2="${cx+wR}" y2="${waistY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-wR}" cy="${waistY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+wR}" cy="${waistY}" r="1.5" fill="${c}" opacity=".5"/>
+
+    <!-- Hip measurement arrow -->
+    <line x1="${cx+hR+4}" y1="${hipY}" x2="${cx+bR+30}" y2="${hipY}" stroke="${c}" stroke-width="0.7" stroke-dasharray="3,2"/>
+    <text x="${cx+bR+32}" y="${hipY-2}" fill="${c}" font-size="8" font-weight="700" font-family="JetBrains Mono">${sp.hp}cm</text>
+    <text x="${cx+bR+32}" y="${hipY+7}" fill="#888" font-size="6" font-family="JetBrains Mono">Hips</text>
+    <line x1="${cx-hR}" y1="${hipY}" x2="${cx+hR}" y2="${hipY}" stroke="${c}" stroke-width="0.6" opacity=".4"/>
+    <circle cx="${cx-hR}" cy="${hipY}" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="${cx+hR}" cy="${hipY}" r="1.5" fill="${c}" opacity=".5"/>
+  </svg>`;
+}
+
+function renderSizeTechGrid() {
+  const grid = document.getElementById('srTechGrid');
+  if (!grid) return;
+
+  // Fitzpatrick mapping for skin tones in our data
+  const fitzMap = {
+    'very fair': {type:'I',hex:'#FDEBD3'},
+    'fair': {type:'II',hex:'#F5D0A9'},
+    'olive': {type:'III-IV',hex:'#D4A76A'},
+    'light brown': {type:'III',hex:'#C4944A'},
+    'brown': {type:'V',hex:'#8B6914'},
+    'dark brown': {type:'V-VI',hex:'#6B4A14'}
+  };
+
+  grid.innerHTML = SO.map(sz => {
+    const sp = SR_SPECS[sz];
+    const c = SC[sz];
+    const models = MD.filter(m => m.sz === sz);
+    // Get unique skin tones for this size
+    const skins = [...new Set(models.map(m => m.sk))];
+    const skinDots = skins.map(sk => {
+      const fitz = fitzMap[sk] || {type:'?',hex:'#888'};
+      return `<div style="display:inline-flex;align-items:center;gap:3px" title="${sk} (Fitzpatrick ${fitz.type})"><div style="width:12px;height:12px;border-radius:50%;background:${fitz.hex};border:1px solid rgba(255,255,255,.2)"></div><span style="font-size:7px;color:var(--tx3)">${sk}</span></div>`;
+    }).join('');
+
+    return `<div style="background:var(--sf);border:2px solid ${c}40;border-radius:12px;overflow:hidden">
+      <div style="background:${c};padding:6px 12px;text-align:center;font-size:14px;font-weight:900;color:#fff;letter-spacing:1px">${sz}</div>
+      <div style="padding:8px">
+        ${buildTechDrawingSVG(sz)}
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center">${skinDots}</div>
+        <div style="margin-top:6px;text-align:center;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">
+          W/H: ${sp.wh} · ${models.length} models
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Populate skin map
+  const skinMap = document.getElementById('srSkinMap');
+  if (skinMap) {
+    const skinGroups = {};
+    MD.forEach(m => { if (!skinGroups[m.sk]) skinGroups[m.sk] = []; skinGroups[m.sk].push(m); });
+    skinMap.innerHTML = Object.entries(skinGroups).map(([sk, ms]) => {
+      const fitz = fitzMap[sk] || {type:'?',hex:'#888'};
+      return `<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:var(--sf2);border-radius:4px;border:1px solid var(--bd)">
+        <div style="width:14px;height:14px;border-radius:50%;background:${fitz.hex};border:1px solid rgba(255,255,255,.15)"></div>
+        <span style="font-size:9px;color:var(--tx)">${sk}</span>
+        <span style="font-size:8px;color:var(--tx3)">(${ms.length})</span>
+        <span style="font-size:7px;color:var(--tx3)">Fitz ${fitz.type}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { renderSizeTechGrid(); loadSizeSpecs('measurements'); });
+
+// ═══════════════════════════════════════════════════
+// ═══ ADVANCED QC TAB — Model validation with checklist ═══
+// ═══════════════════════════════════════════════════
+// ── Navigate to QC Advanced for a specific model ──
+function openQCAForModel(mid) {
+  // Switch to QC Advanced tab
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  const tabBtn = document.querySelector('[data-tab="qcAdvanced"]');
+  if (tabBtn) tabBtn.classList.add('active');
+  const panel = document.getElementById('p-qcAdvanced');
+  if (panel) panel.classList.add('active');
+  // Select the model in the dropdown
+  const select = document.getElementById('qcaModelSelect');
+  if (select) { select.value = mid; loadQCAModel(); }
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function populateQCAModelSelector() {
+  const select = document.getElementById('qcaModelSelect');
+  if (!select) return;
+  MD.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = `${model.nm} (#${model.id}) — ${model.sz}`;
+    select.appendChild(option);
+  });
+}
+
+async function loadQCAModel() {
+  const modelId = parseInt(document.getElementById('qcaModelSelect').value);
+  if (!modelId) { document.getElementById('qcaMainContent').style.display = 'none'; return; }
+
+  const model = MD.find(m => m.id === modelId);
+  if (!model) return;
+
+  const wt = WT[modelId] || { w: '?', d: '?' };
+  const szColor = SC[model.sz] || 'var(--ac)';
+
+  // Show model badge
+  document.getElementById('qcaModelBadge').style.display = 'inline-flex';
+  document.getElementById('qcaModelBadge').innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:8px;background:${szColor}18;border:1px solid ${szColor}40;font-size:12px;font-weight:700;color:${szColor}">${model.nm} #${model.id} · ${model.sz} · ${model.h}cm · ~${wt.w}kg</span>`;
+
+  // Load size guidelines
+  let sizeGuide = null;
+  if (sb) {
+    try {
+      const resp = await sb.from('size_guidelines').select('*').eq('size_id', model.sz).single();
+      if (!resp.error) sizeGuide = resp.data;
+    } catch(e) {}
+  }
+
+  // Build 6-pose grid with overlay containers
+  const grid = document.getElementById('qcaPoseGrid');
+  grid.innerHTML = allPoses.map(pose => {
+    const img = dbImages[modelId + '_' + pose] || '';
+    const poseKey = modelId + '_' + pose.replace(/ /g, '_');
+    const isCU = pose === 'Close-Up';
+    return `<div class="qca-pose-cell" id="qcaCell-${poseKey}">
+      <div class="qca-pose-img-wrap">
+        ${img
+          ? `<img src="${img}" alt="${pose}"/>`
+          : `<div class="ovl-empty"><span>📷</span>${pose}<br><span style="font-size:9px;opacity:.5">לא הועלתה</span></div>`
+        }
+        ${!isCU ? `<svg class="ovl-silhouette" id="ovlSil-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${buildSilhouetteSVG(model, pose)}
+        </svg>` : `<svg class="ovl-silhouette" id="ovlSil-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${buildFaceSilhouetteSVG(model)}
+        </svg>`}
+        <svg class="ovl-measure" id="ovlMeas-${poseKey}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+          ${isCU ? '' : buildMeasurementSVG(model, sizeGuide)}
+        </svg>
+        ${img ? `<div class="qca-cell-toggles">
+          <button class="qca-cell-toggle" onclick="toggleCellOverlay(this,'ovlSil-${poseKey}','on')" title="Silhouette">👁</button>
+          <button class="qca-cell-toggle" onclick="toggleCellOverlay(this,'ovlMeas-${poseKey}','on-m')" title="Measurements">📏</button>
+        </div>` : ''}
+      </div>
+      <div class="pose-label">${pose}</div>
+    </div>`;
+  }).join('');
+
+  // Build reference specs
+  const sizeModels = MD.filter(m => m.sz === model.sz);
+  const refHtml = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="font-size:15px;font-weight:800;color:${szColor}">${model.sz} Size Specifications</div>
+      <div style="font-size:11px;color:var(--tx2)">for <strong style="color:${model.cl}">${model.nm}</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--ac2);margin-bottom:8px">📏 Measurements</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2;font-family:'JetBrains Mono',monospace">
+          <div>Height: <span style="color:var(--tx)">${model.h}cm</span> <span style="color:var(--tx3)">(range ${Math.min(...sizeModels.map(m=>m.h))}–${Math.max(...sizeModels.map(m=>m.h))})</span></div>
+          <div>Weight: <span style="color:var(--tx)">~${wt.w}kg</span></div>
+          <div>Bust: <span style="color:var(--tx)">${model.bu}cm</span></div>
+          <div>Waist: <span style="color:var(--tx)">${model.wa}cm</span></div>
+          <div>Hips: <span style="color:var(--tx)">${model.hp}cm</span></div>
+          <div>W/H: <span style="color:var(--tx)">${model.hp?(model.wa/model.hp).toFixed(2):'—'}</span></div>
+        </div>
+      </div>
+      ${sizeGuide ? `
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--cy);margin-bottom:8px">🏋️ Body Composition</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2">
+          <div>Muscle Def: <span style="color:var(--tx)">${sizeGuide.muscle_definition_percent}%</span></div>
+          <div>Body Fat: <span style="color:var(--tx)">${sizeGuide.body_fat_percent_min}–${sizeGuide.body_fat_percent_max}%</span></div>
+          <div>Shoulder: <span style="color:var(--tx)">${sizeGuide.shoulder_width_cm}cm</span></div>
+          <div>Skin: <span style="color:var(--tx)">${sizeGuide.skin_appearance||'—'}</span></div>
+        </div>
+      </div>
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--pk);margin-bottom:8px">😊 Facial Features</div>
+        <div style="font-size:10px;color:var(--tx2);line-height:2">
+          <div>Structure: <span style="color:var(--tx)">${sizeGuide.facial_structure_description||'—'}</span></div>
+          <div>Cheekbones: <span style="color:var(--tx)">${sizeGuide.cheekbone_description||'—'}</span></div>
+          <div>Jawline: <span style="color:var(--tx)">${sizeGuide.jawline_description||'—'}</span></div>
+          <div>Lips: <span style="color:var(--tx)">${sizeGuide.lips_description||'—'}</span></div>
+        </div>
+      </div>` : `
+      <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:12px;grid-column:span 2">
+        <div style="font-size:10px;color:var(--tx3);font-style:italic">Connect <code>size_guidelines</code> Supabase table for facial & body composition details</div>
+      </div>`}
+    </div>`;
+  document.getElementById('qcaReferenceSpecs').innerHTML = refHtml;
+  document.getElementById('qcaRefBadge').textContent = `${model.nm} · ${model.sz} · B${model.bu}/W${model.wa}/H${model.hp}`;
+
+  // Show main content
+  document.getElementById('qcaMainContent').style.display = 'block';
+
+  // Reset overlay buttons
+  document.getElementById('btnOvlSilhouette').classList.remove('active');
+  document.getElementById('btnOvlMeasure').classList.remove('active-measure');
+  window._qcaOvlSil = false;
+  window._qcaOvlMeas = false;
+
+  // Load existing QC results if any
+  if (sb) {
+    try {
+      const { data: qcResults } = await sb.from('qc_results').select('*').eq('model_id', modelId).order('checked_at', { ascending: false }).limit(1);
+      if (qcResults && qcResults.length > 0) {
+        const result = qcResults[0];
+        document.getElementById('qcaNotes').value = result.overall_notes || '';
+        const fieldMap = {
+          'facial_structure': 'facial_structure_pass', 'cheekbones': 'cheekbones_pass',
+          'jawline': 'jawline_pass', 'lips': 'lips_pass', 'muscle_definition': 'muscle_definition_pass',
+          'body_fat': 'body_fat_pass', 'curves': 'curves_pass', 'shoulder_width': 'shoulder_width_pass',
+          'height': 'height_pass', 'weight': 'weight_pass', 'bust_waist_hip': 'bust_waist_hip_pass',
+          'wh_ratio': 'wh_ratio_pass', 'six_angle_consistency': 'six_angle_consistency_pass',
+          'lighting_consistency': 'lighting_consistency_pass', 'pose_consistency': 'pose_consistency_pass'
+        };
+        document.querySelectorAll('.qca-check').forEach(cb => {
+          const dbField = fieldMap[cb.dataset.item];
+          cb.checked = dbField && result[dbField] ? true : false;
+        });
+      } else {
+        document.querySelectorAll('.qca-check').forEach(cb => cb.checked = false);
+        document.getElementById('qcaNotes').value = '';
+      }
+    } catch(e) { console.warn('Could not load QC results:', e); }
+  }
+}
+
+// ── SVG OVERLAY BUILDERS ──
+
+function buildSilhouetteSVG(model, pose) {
+  // Measurement ruler bars — clear pass/fail indicators on right side of image
+  const color = SC[model.sz] || '#C44569';
+  const isCU = pose === 'Close-Up';
+  if (isCU) return buildFaceSilhouetteSVG(model);
+
+  const sm = MD.filter(m => m.sz === model.sz);
+  const wt = WT[model.id] || {w:'?'};
+
+  const barX = 195, barW = 95, barH = 16, rowH = 32;
+  const startY = 30;
+
+  function ruler(y, label, val, unit, min, max) {
+    const inRange = val >= min && val <= max;
+    const bg = inRange ? 'rgba(16,185,129,.3)' : 'rgba(244,63,94,.3)';
+    const border = inRange ? '#10b981' : '#f43f5e';
+    const mark = inRange ? '✓' : '!';
+    return `
+      <rect x="${barX}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="${bg}" stroke="${border}" stroke-width="1"/>
+      <text x="${barX+6}" y="${y+11}" fill="#fff" font-size="9" font-weight="700" font-family="JetBrains Mono">${label} ${val}${unit}</text>
+      <text x="${barX+barW-6}" y="${y+11}" fill="${border}" font-size="9" font-weight="900" font-family="JetBrains Mono" text-anchor="end">${mark}</text>
+      <text x="${barX+6}" y="${y+barH+8}" fill="rgba(255,255,255,.4)" font-size="6.5" font-family="JetBrains Mono">range: ${min}–${max}${unit}</text>`;
+  }
+
+  let svg = '';
+  // Dark panel background
+  svg += `<rect x="${barX-6}" y="${startY-16}" width="${barW+12}" height="${rowH*6+30}" rx="8" fill="rgba(6,6,9,.75)" stroke="${color}" stroke-width="1" opacity=".9"/>`;
+  svg += `<text x="${barX+barW/2}" y="${startY-2}" text-anchor="middle" fill="${color}" font-size="10" font-weight="900" font-family="JetBrains Mono">${model.sz} CHECK</text>`;
+
+  let y = startY + 8;
+  svg += ruler(y, 'Ht', model.h, 'cm', Math.min(...sm.map(m=>m.h)), Math.max(...sm.map(m=>m.h)));
+  y += rowH;
+  svg += ruler(y, 'Wt', wt.w, 'kg', Math.min(...sm.map(m=>(WT[m.id]||{w:0}).w)), Math.max(...sm.map(m=>(WT[m.id]||{w:0}).w)));
+  y += rowH;
+  svg += ruler(y, 'Bu', model.bu, 'cm', Math.min(...sm.map(m=>m.bu)), Math.max(...sm.map(m=>m.bu)));
+  y += rowH;
+  svg += ruler(y, 'Wa', model.wa, 'cm', Math.min(...sm.map(m=>m.wa)), Math.max(...sm.map(m=>m.wa)));
+  y += rowH;
+  svg += ruler(y, 'Hi', model.hp, 'cm', Math.min(...sm.map(m=>m.hp)), Math.max(...sm.map(m=>m.hp)));
+  y += rowH;
+  const whr = model.hp ? (model.wa/model.hp).toFixed(2) : '—';
+  svg += `<rect x="${barX}" y="${y}" width="${barW}" height="${barH}" rx="4" fill="rgba(139,92,246,.25)" stroke="#a78bfa" stroke-width="0.8"/>`;
+  svg += `<text x="${barX+6}" y="${y+11}" fill="#c4b5fd" font-size="9" font-weight="700" font-family="JetBrains Mono">W/H ${whr}</text>`;
+
+  return svg;
+}
+
+function buildFaceSilhouetteSVG(model) {
+  const color = SC[model.sz] || '#8b5cf6';
+  const cx = 150, cy = 180;
+  const szIdx = SO.indexOf(model.sz);
+  // Face proportions scale with size
+  const faceW = 50 + szIdx * 7;
+  const faceH = 68 + szIdx * 4;
+  const jawW = faceW * (0.85 + szIdx * 0.02); // jaw widens with size
+  const uid = Math.random().toString(36).substr(2,6);
+
+  return `
+    <defs><filter id="fGlow_${uid}"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <!-- Face outline -->
+    <path d="
+      M${cx},${cy-faceH}
+      C${cx+faceW*0.6},${cy-faceH} ${cx+faceW},${cy-faceH*0.5} ${cx+faceW},${cy-faceH*0.1}
+      C${cx+faceW},${cy+faceH*0.15} ${cx+jawW},${cy+faceH*0.4} ${cx+jawW*0.7},${cy+faceH*0.65}
+      Q${cx+jawW*0.3},${cy+faceH*0.9} ${cx},${cy+faceH}
+      Q${cx-jawW*0.3},${cy+faceH*0.9} ${cx-jawW*0.7},${cy+faceH*0.65}
+      C${cx-jawW},${cy+faceH*0.4} ${cx-faceW},${cy+faceH*0.15} ${cx-faceW},${cy-faceH*0.1}
+      C${cx-faceW},${cy-faceH*0.5} ${cx-faceW*0.6},${cy-faceH} ${cx},${cy-faceH}
+      Z"
+      fill="none" stroke="${color}" stroke-width="1.4" stroke-opacity=".45" filter="url(#fGlow_${uid})"/>
+
+    <!-- Forehead hairline -->
+    <path d="M${cx-faceW*0.75},${cy-faceH*0.7} Q${cx},${cy-faceH*1.05} ${cx+faceW*0.75},${cy-faceH*0.7}" fill="none" stroke="${color}" stroke-width="0.7" stroke-opacity=".2"/>
+
+    <!-- Eye line -->
+    <line x1="${cx-faceW*0.65}" y1="${cy-faceH*0.12}" x2="${cx-faceW*0.15}" y2="${cy-faceH*0.12}" stroke="${color}" stroke-width="1" stroke-opacity=".35"/>
+    <line x1="${cx+faceW*0.15}" y1="${cy-faceH*0.12}" x2="${cx+faceW*0.65}" y2="${cy-faceH*0.12}" stroke="${color}" stroke-width="1" stroke-opacity=".35"/>
+    <!-- Iris markers -->
+    <circle cx="${cx-faceW*0.35}" cy="${cy-faceH*0.12}" r="3" fill="none" stroke="${color}" stroke-width="0.6" stroke-opacity=".3"/>
+    <circle cx="${cx+faceW*0.35}" cy="${cy-faceH*0.12}" r="3" fill="none" stroke="${color}" stroke-width="0.6" stroke-opacity=".3"/>
+
+    <!-- Nose -->
+    <path d="M${cx},${cy-faceH*0.1} L${cx},${cy+faceH*0.15} M${cx-faceW*0.1},${cy+faceH*0.18} Q${cx},${cy+faceH*0.22} ${cx+faceW*0.1},${cy+faceH*0.18}" fill="none" stroke="${color}" stroke-width="0.7" stroke-opacity=".3"/>
+
+    <!-- Mouth -->
+    <path d="M${cx-faceW*0.25},${cy+faceH*0.35} Q${cx},${cy+faceH*0.42} ${cx+faceW*0.25},${cy+faceH*0.35}" fill="none" stroke="${color}" stroke-width="0.9" stroke-opacity=".35"/>
+    <path d="M${cx-faceW*0.2},${cy+faceH*0.38} Q${cx},${cy+faceH*0.32} ${cx+faceW*0.2},${cy+faceH*0.38}" fill="none" stroke="${color}" stroke-width="0.6" stroke-opacity=".2"/>
+
+    <!-- Cheekbone markers -->
+    <line x1="${cx-faceW*0.95}" y1="${cy}" x2="${cx-faceW*0.7}" y2="${cy}" stroke="${color}" stroke-width="0.7" stroke-dasharray="3,2" stroke-opacity=".3"/>
+    <line x1="${cx+faceW*0.95}" y1="${cy}" x2="${cx+faceW*0.7}" y2="${cy}" stroke="${color}" stroke-width="0.7" stroke-dasharray="3,2" stroke-opacity=".3"/>
+    <text x="${cx-faceW-8}" y="${cy+3}" text-anchor="end" fill="${color}" font-size="6" font-family="JetBrains Mono" opacity=".4">cheekbone</text>
+
+    <!-- Jawline markers -->
+    <line x1="${cx-jawW*0.85}" y1="${cy+faceH*0.55}" x2="${cx-jawW*0.55}" y2="${cy+faceH*0.55}" stroke="${color}" stroke-width="0.7" stroke-dasharray="3,2" stroke-opacity=".3"/>
+    <line x1="${cx+jawW*0.85}" y1="${cy+faceH*0.55}" x2="${cx+jawW*0.55}" y2="${cy+faceH*0.55}" stroke="${color}" stroke-width="0.7" stroke-dasharray="3,2" stroke-opacity=".3"/>
+    <text x="${cx+jawW+6}" y="${cy+faceH*0.55+3}" fill="${color}" font-size="6" font-family="JetBrains Mono" opacity=".4">jaw</text>
+
+    <!-- Neck -->
+    <line x1="${cx-faceW*0.3}" y1="${cy+faceH}" x2="${cx-faceW*0.35}" y2="${cy+faceH+25}" stroke="${color}" stroke-width="0.8" stroke-opacity=".25"/>
+    <line x1="${cx+faceW*0.3}" y1="${cy+faceH}" x2="${cx+faceW*0.35}" y2="${cy+faceH+25}" stroke="${color}" stroke-width="0.8" stroke-opacity=".25"/>
+  `;
+}
+
+function buildMeasurementSVG(model, sizeGuide) {
+  const cx = 150;
+  // Match the new anatomical positions from buildSilhouetteSVG
+  const bustY = 114, waistY = 146, hipY = 174;
+  const bust = model.bu, waist = model.wa, hips = model.hp;
+  const color = '#06b6d4';
+
+  const sizeModels = MD.filter(m => m.sz === model.sz);
+  const buRange = sizeGuide ? `${sizeGuide.bust_min}–${sizeGuide.bust_max}` : `${Math.min(...sizeModels.map(m=>m.bu))}–${Math.max(...sizeModels.map(m=>m.bu))}`;
+  const waRange = sizeGuide ? `${sizeGuide.waist_min}–${sizeGuide.waist_max}` : `${Math.min(...sizeModels.map(m=>m.wa))}–${Math.max(...sizeModels.map(m=>m.wa))}`;
+  const hpRange = sizeGuide ? `${sizeGuide.hip_min}–${sizeGuide.hip_max}` : `${Math.min(...sizeModels.map(m=>m.hp))}–${Math.max(...sizeModels.map(m=>m.hp))}`;
+  const htRange = sizeGuide ? `${sizeGuide.height_min}–${sizeGuide.height_max}` : `${Math.min(...sizeModels.map(m=>m.h))}–${Math.max(...sizeModels.map(m=>m.h))}`;
+
+  return `
+    <defs><filter id="mGlow"><feGaussianBlur stdDeviation="0.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+
+    <!-- Bust line -->
+    <line x1="28" y1="${bustY}" x2="272" y2="${bustY}" stroke="${color}" stroke-width="1" stroke-dasharray="8,4" stroke-opacity=".6" filter="url(#mGlow)"/>
+    <rect x="210" y="${bustY-11}" width="82" height="15" rx="4" fill="rgba(6,182,212,.18)" stroke="${color}" stroke-width=".5" stroke-opacity=".6"/>
+    <text x="251" y="${bustY+1}" text-anchor="middle" fill="${color}" font-size="8.5" font-family="JetBrains Mono" font-weight="700">B ${bust}cm</text>
+    <text x="26" y="${bustY+1}" text-anchor="end" fill="${color}" font-size="6.5" font-family="JetBrains Mono" opacity=".5">${buRange}</text>
+
+    <!-- Waist line -->
+    <line x1="28" y1="${waistY}" x2="272" y2="${waistY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="8,4" stroke-opacity=".6" filter="url(#mGlow)"/>
+    <rect x="210" y="${waistY-11}" width="82" height="15" rx="4" fill="rgba(245,158,11,.18)" stroke="#f59e0b" stroke-width=".5" stroke-opacity=".6"/>
+    <text x="251" y="${waistY+1}" text-anchor="middle" fill="#f59e0b" font-size="8.5" font-family="JetBrains Mono" font-weight="700">W ${waist}cm</text>
+    <text x="26" y="${waistY+1}" text-anchor="end" fill="#f59e0b" font-size="6.5" font-family="JetBrains Mono" opacity=".5">${waRange}</text>
+
+    <!-- Hip line -->
+    <line x1="28" y1="${hipY}" x2="272" y2="${hipY}" stroke="#f43f5e" stroke-width="1" stroke-dasharray="8,4" stroke-opacity=".6" filter="url(#mGlow)"/>
+    <rect x="210" y="${hipY-11}" width="82" height="15" rx="4" fill="rgba(244,63,94,.18)" stroke="#f43f5e" stroke-width=".5" stroke-opacity=".6"/>
+    <text x="251" y="${hipY+1}" text-anchor="middle" fill="#f43f5e" font-size="8.5" font-family="JetBrains Mono" font-weight="700">H ${hips}cm</text>
+    <text x="26" y="${hipY+1}" text-anchor="end" fill="#f43f5e" font-size="6.5" font-family="JetBrains Mono" opacity=".5">${hpRange}</text>
+
+    <!-- Height ruler (left side) -->
+    <line x1="12" y1="18" x2="12" y2="375" stroke="${color}" stroke-width="0.8" stroke-opacity=".35"/>
+    <line x1="6" y1="18" x2="18" y2="18" stroke="${color}" stroke-width="0.8" stroke-opacity=".35"/>
+    <line x1="6" y1="375" x2="18" y2="375" stroke="${color}" stroke-width="0.8" stroke-opacity=".35"/>
+    <!-- Arrow tips -->
+    <path d="M12,18 L9,24 L15,24 Z" fill="${color}" fill-opacity=".3"/>
+    <path d="M12,375 L9,369 L15,369 Z" fill="${color}" fill-opacity=".3"/>
+    <text x="12" y="12" text-anchor="middle" fill="${color}" font-size="8" font-family="JetBrains Mono" font-weight="700">${model.h}cm</text>
+    <text x="12" y="389" text-anchor="middle" fill="${color}" font-size="6" font-family="JetBrains Mono" opacity=".5">${htRange}</text>
+
+    <!-- Weight badge -->
+    <rect x="216" y="6" width="76" height="18" rx="5" fill="rgba(6,182,212,.12)" stroke="${color}" stroke-width=".5" stroke-opacity=".5"/>
+    <text x="254" y="19" text-anchor="middle" fill="${color}" font-size="8.5" font-family="JetBrains Mono" font-weight="700">~${(WT[model.id]||{w:'?'}).w}kg</text>
+
+    <!-- W/H ratio badge -->
+    <rect x="216" y="28" width="76" height="14" rx="4" fill="rgba(139,92,246,.1)" stroke="var(--ac)" stroke-width=".4" stroke-opacity=".4"/>
+    <text x="254" y="39" text-anchor="middle" fill="var(--ac2)" font-size="7" font-family="JetBrains Mono" font-weight="600">W/H ${model.hp?(model.wa/model.hp).toFixed(2):'—'}</text>
+  `;
+}
+
+// ── OVERLAY TOGGLE FUNCTIONS ──
+
+function toggleGlobalOverlay(type) {
+  if (type === 'silhouette') {
+    window._qcaOvlSil = !window._qcaOvlSil;
+    document.getElementById('btnOvlSilhouette').classList.toggle('active', window._qcaOvlSil);
+    document.querySelectorAll('.ovl-silhouette').forEach(el => el.classList.toggle('visible', window._qcaOvlSil));
+    // Sync per-cell buttons
+    document.querySelectorAll('.qca-cell-toggle').forEach(btn => {
+      if (btn.title === 'Silhouette') btn.classList.toggle('on', window._qcaOvlSil);
+    });
+  } else {
+    window._qcaOvlMeas = !window._qcaOvlMeas;
+    document.getElementById('btnOvlMeasure').classList.toggle('active-measure', window._qcaOvlMeas);
+    document.querySelectorAll('.ovl-measure').forEach(el => el.classList.toggle('visible', window._qcaOvlMeas));
+    document.querySelectorAll('.qca-cell-toggle').forEach(btn => {
+      if (btn.title === 'Measurements') btn.classList.toggle('on-m', window._qcaOvlMeas);
+    });
+  }
+}
+
+function toggleCellOverlay(btn, svgId, activeClass) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const isVisible = svg.classList.contains('visible');
+  svg.classList.toggle('visible', !isVisible);
+  btn.classList.toggle(activeClass, !isVisible);
+}
+
+async function saveQCAResults(status) {
+  const modelId = parseInt(document.getElementById('qcaModelSelect').value);
+  if (!modelId) { toast('בחרי מודל קודם'); return; }
+
+  const checks = {};
+  document.querySelectorAll('.qca-check').forEach(cb => {
+    checks[cb.dataset.item + '_pass'] = cb.checked;
+  });
+
+  const qcData = {
+    model_id: modelId,
+    ...checks,
+    overall_notes: document.getElementById('qcaNotes').value,
+    checked_by: currentUser || 'unknown',
+    status: status
+  };
+
+  if (sb) {
+    try {
+      const { error } = await sb.from('qc_results').insert([qcData]);
+      if (error) { console.error('Error saving QC:', error); toast('שגיאה בשמירת QC: ' + error.message); return; }
+    } catch(e) { console.error('QC save exception:', e); toast('שגיאה: ' + e.message); return; }
+  }
+  toast(`QC saved as ${status} ` + (status === 'approved' ? '✅' : status === 'needs_revision' ? '⚠️' : '💾'));
+}
+
+// Inline QC save (from model detail modal)
+async function saveInlineQC(modelId, status) {
+  const checks = {};
+  let checkedCount = 0;
+  document.querySelectorAll(`.qcInline-${modelId}`).forEach((cb, i) => {
+    checks['check_' + i + '_pass'] = cb.checked;
+    if (cb.checked) checkedCount++;
+  });
+  const notes = document.getElementById('qcInlineNotes-' + modelId)?.value || '';
+  const m = MD.find(x => x.id === modelId);
+
+  const qcData = {
+    model_id: modelId,
+    ...checks,
+    overall_notes: notes,
+    checked_by: currentUser || 'unknown',
+    status: status
+  };
+
+  if (sb) {
+    try {
+      const { error } = await sb.from('qc_results').insert([qcData]);
+      if (error) { console.error('Inline QC error:', error); toast('שגיאה: ' + error.message); return; }
+    } catch(e) { toast('שגיאה: ' + e.message); return; }
+  }
+  toast(`${m ? m.nm : '#' + modelId} — QC ${status} (${checkedCount}/24) ` + (status === 'approved' ? '✅' : status === 'rejected' ? '❌' : '⚠️'));
+}
+
+// ═══════════════════════════════════════════════════
+// ═══ ENHANCED PROMPTS — Size-based prompt generation ═══
+// ═══════════════════════════════════════════════════
+async function loadEnhancedSizePrompt() {
+  const size = document.getElementById('enhSizeSelector').value;
+  if (!size) { document.getElementById('enhPromptContent').style.display = 'none'; return; }
+
+  // Try Supabase first
+  let sizeData = null;
+  if (sb) {
+    try {
+      const resp = await sb.from('size_guidelines').select('*').eq('size_id', size).single();
+      if (!resp.error) sizeData = resp.data;
+    } catch(e) {}
+  }
+
+  // Build reference info
+  const sizeModels = MD.filter(m => m.sz === size);
+  const avgH = sizeModels.length ? Math.round(sizeModels.reduce((a,m) => a+m.h, 0)/sizeModels.length) : '?';
+  const avgW = sizeModels.length ? Math.round(sizeModels.reduce((a,m) => a+(WT[m.id]||{w:60}).w, 0)/sizeModels.length) : '?';
+
+  const refHtml = `
+    <div style="font-size:14px;font-weight:800;color:${SC[size]};margin-bottom:10px">${size} Size Reference</div>
+    <div style="font-size:11px;color:var(--tx2);line-height:1.9">
+      <div><strong style="color:var(--tx)">Measurements:</strong></div>
+      <div>Height: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.h))+'–'+Math.max(...sizeModels.map(m=>m.h))+'cm' : '—'}</div>
+      <div>Weight: ${sizeModels.length ? Math.min(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))+'–'+Math.max(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))+'kg' : '—'}</div>
+      <div>Bust: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.bu))+'–'+Math.max(...sizeModels.map(m=>m.bu))+'cm' : '—'}</div>
+      <div>Waist: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.wa))+'–'+Math.max(...sizeModels.map(m=>m.wa))+'cm' : '—'}</div>
+      <div>Hips: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.hp))+'–'+Math.max(...sizeModels.map(m=>m.hp))+'cm' : '—'}</div>
+      ${sizeData ? `
+        <div style="margin-top:8px"><strong style="color:var(--tx)">Body Composition:</strong></div>
+        <div>Muscle Definition: ${sizeData.muscle_definition_percent}%</div>
+        <div>Body Fat: ${sizeData.body_fat_percent_min}–${sizeData.body_fat_percent_max}%</div>
+        <div>Skin: ${sizeData.skin_appearance || '—'}</div>
+        <div style="margin-top:8px"><strong style="color:var(--tx)">Facial Features:</strong></div>
+        <div>Structure: ${sizeData.facial_structure_description || '—'}</div>
+        <div>Cheekbones: ${sizeData.cheekbone_description || '—'}</div>
+        <div>Jawline: ${sizeData.jawline_description || '—'}</div>
+        <div>Lips: ${sizeData.lips_description || '—'}</div>
+      ` : `<div style="margin-top:8px;color:var(--tx3);font-style:italic">Supabase size_guidelines table not available — showing local data only</div>`}
+    </div>`;
+
+  document.getElementById('enhPromptReference').innerHTML = refHtml;
+
+  // Build enhanced prompt template
+  let prompt;
+  if (sizeData && sizeData.prompt_template) {
+    prompt = sizeData.prompt_template;
+  } else {
+    prompt = `ENHANCED SIZE-BASED PROMPT — ${size}
+
+GOAL: Generate an AI fashion model for size ${size}. Do NOT copy a real person.
+
+BODY SPECIFICATIONS:
+- Height: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.h))+'–'+Math.max(...sizeModels.map(m=>m.h))+'cm' : 'TBD'}
+- Weight: ${sizeModels.length ? Math.min(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))+'–'+Math.max(...sizeModels.map(m=>(WT[m.id]||{w:0}).w))+'kg' : 'TBD'}
+- Bust: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.bu))+'–'+Math.max(...sizeModels.map(m=>m.bu))+'cm' : 'TBD'}
+- Waist: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.wa))+'–'+Math.max(...sizeModels.map(m=>m.wa))+'cm' : 'TBD'}
+- Hips: ${sizeModels.length ? Math.min(...sizeModels.map(m=>m.hp))+'–'+Math.max(...sizeModels.map(m=>m.hp))+'cm' : 'TBD'}
+${sizeData ? `
+FACIAL STRUCTURE:
+- Face: ${sizeData.facial_structure_description || '—'}
+- Cheekbones: ${sizeData.cheekbone_description || '—'}
+- Jawline: ${sizeData.jawline_description || '—'}
+- Chin: ${sizeData.chin_description || '—'}
+- Lips: ${sizeData.lips_description || '—'}
+- Proportions: ${sizeData.face_proportions || '—'}
+
+BODY COMPOSITION:
+- Muscle definition: ${sizeData.muscle_definition_percent}% visible
+- Body fat: ${sizeData.body_fat_percent_min}–${sizeData.body_fat_percent_max}%
+- Shoulder width: ${sizeData.shoulder_width_cm}cm
+- Ribcage: ${sizeData.ribcage_description || '—'}
+- Hip projection: ${sizeData.hip_projection_description || '—'}
+- Skin: ${sizeData.skin_appearance || '—'}
+- Overall: ${sizeData.body_composition_summary || '—'}` : `
+NOTE: Connect size_guidelines Supabase table for full facial & body composition specs.`}
+
+STUDIO: ${studio}
+WARDROBE: ${wardrobe}
+CONSISTENCY: ${consistency}`;
+  }
+
+  document.getElementById('enhPromptTemplate').value = prompt;
+  document.getElementById('enhPromptContent').style.display = 'block';
+}
+
+function copyEnhancedPrompt() {
+  const text = document.getElementById('enhPromptTemplate').value;
+  navigator.clipboard.writeText(text).then(() => toast('Enhanced prompt copied! 📋'));
+}
+
+// ── Initialize new features ──
+// ═══════════════════════════════════════════════════
+// ═══ AI STUDIO — Gemini Image Generation ═══
+// ═══════════════════════════════════════════════════
+
+let aiGeminiKey = null;
+let aiHistory = [];
+
+function connectGemini() {
+  const key = document.getElementById('aiApiKey').value.trim();
+  if (!key || key.length < 20) { toast('מפתח API לא תקין'); return; }
+  aiGeminiKey = key;
+  document.getElementById('aiConnStatus').innerHTML = '<span style="color:var(--gn)">🟢 מחובר ל-Gemini</span>';
+  document.getElementById('aiStudioMain').style.display = 'block';
+  document.getElementById('aiKeyBar').style.background = 'var(--sf2)';
+  // Populate model selector
+  const sel = document.getElementById('aiModelSelect');
+  sel.innerHTML = '<option value="">בחרי מודל...</option>';
+  MD.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = `${m.nm} #${m.id} — ${m.sz} ${m.bd}`;
+    sel.appendChild(opt);
+  });
+  toast('מחובר ל-Gemini! 🟢');
+  aiAssemblePrompt();
+  aiDrawWires();
+}
+
+function aiUpdatePreview() {
+  const mid = parseInt(document.getElementById('aiModelSelect').value);
+  const m = MD.find(x => x.id === mid);
+  if (!m) {
+    document.getElementById('aiModelPreview').innerHTML = '';
+    document.getElementById('aiSpecsBody').innerHTML = '<div style="color:var(--tx3);font-size:9px">← בחרי מודל</div>';
+    return;
+  }
+  const wt = WT[m.id] || { w: '?', d: '?' };
+  const szC = SC[m.sz];
+  document.getElementById('aiModelPreview').innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span style="color:${szC};font-weight:800;font-size:14px">${m.nm}</span>
+      <span style="background:${szC}20;color:${szC};padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700">${m.sz}</span>
+    </div>
+    <div style="font-size:9px;color:var(--tx2)">${m.h}cm · ~${wt.w}kg · ${m.bd} · ${m.sk} · ${m.eth}</div>
+    <div style="font-size:9px;color:${szC};margin-top:2px">${m.tr}</div>`;
+
+  document.getElementById('aiSpecsBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:9px;font-family:'JetBrains Mono',monospace">
+      <div>H: <span style="color:var(--tx)">${m.h}cm</span></div>
+      <div>W: <span style="color:var(--tx)">~${wt.w}kg</span></div>
+      <div>Bust: <span style="color:var(--tx)">${m.bu}</span></div>
+      <div>Waist: <span style="color:var(--tx)">${m.wa}</span></div>
+      <div>Hips: <span style="color:var(--tx)">${m.hp}</span></div>
+      <div>W/H: <span style="color:var(--tx)">${m.hp?(m.wa/m.hp).toFixed(2):'—'}</span></div>
+      <div>Eyes: <span style="color:var(--tx)">${m.ey}</span></div>
+      <div>Hair: <span style="color:var(--tx)">${m.hr}</span></div>
+    </div>`;
+  aiAssemblePrompt();
+}
+
+function aiAssemblePrompt() {
+  const mid = parseInt(document.getElementById('aiModelSelect')?.value);
+  const m = MD.find(x => x.id === mid);
+  const pose = document.getElementById('aiPoseSelect')?.value || 'Front';
+  const custom = document.getElementById('aiCustomPrompt')?.value || '';
+  const imgSize = document.getElementById('aiImageSize')?.value || '';
+  const aspectRatio = document.getElementById('aiAspectRatio')?.value || '3:4';
+
+  if (!m) {
+    document.getElementById('aiPromptPreview').textContent = 'בחרי מודל כדי לבנות פרומפט...';
+    return;
+  }
+
+  const wt = WT[m.id] || { w: '?', d: '?' };
+  const isCU = pose === 'Close-Up';
+  const pDesc = poseDesc[pose] || '';
+  const resLabel = imgSize ? `${imgSize} resolution, ` : '';
+
+  // Fixed studio conditions — identical for ALL models
+  const studioBody = 'Seamless pure white background. Soft even lighting, minimal shadows. Subtle grounding shadow under feet only. Full body head-to-toe, centered. Neutral perspective. High sharpness, realistic casting photography.';
+  const studioCUFixed = 'Seamless pure white background. Soft even beauty lighting with subtle fill. Head and shoulders framing. High sharpness, realistic casting close-up.';
+  const wardrobeBody = 'Black ribbed tank top with wide straps. Black fitted biker shorts. White minimal low-top sneakers, no branding. No logos, prints, accessories, jewelry, or props.';
+  const wardrobeCUFixed = 'Black ribbed tank top with wide straps visible at shoulders. No accessories, jewelry, or props.';
+  const consistencyFixed = '6-image set (Front, 45L, 45R, Profile 90, Back, Close-Up). Model identical across all. Uniform across all models. Natural casting look, NOT editorial.';
+
+  let prompt = `${resLabel}GOAL: Generate an AI fashion model inspired by this type. Do NOT copy a real person. Maintain matching general attributes.\n\n`;
+
+  // EXACT measurements from model data
+  prompt += `MODEL: "${m.nm}" — ${cap(m.st)} stature, ${m.bd} build, size ${m.sz}.\n`;
+  prompt += `EXACT MEASUREMENTS:\n`;
+  prompt += `  Height: ${m.h}cm\n`;
+  prompt += `  Weight: ${wt.w}kg (${wt.d} build)\n`;
+  prompt += `  Bust: ${m.bu}cm\n`;
+  prompt += `  Waist: ${m.wa}cm\n`;
+  prompt += `  Hips: ${m.hp}cm\n`;
+  prompt += `  Waist-to-Hip Ratio: ${m.hp ? (m.wa/m.hp).toFixed(2) : '—'}\n`;
+  if (m.ins) prompt += `  Inseam: ${m.ins}cm\n`;
+  prompt += `APPEARANCE: ${cap(m.sk)} skin, ${m.eth} ethnicity, ${m.hr} hair, ${m.ey.toLowerCase()} eyes.\n`;
+  prompt += `BODY NOTE: Body weight must visually match a ${wt.d} ${m.h}cm woman weighing exactly ${wt.w}kg. Proportions must reflect B${m.bu}/W${m.wa}/H${m.hp}cm precisely.\n`;
+  prompt += `TRAIT: ${m.tr}\n\n`;
+
+  prompt += `POSE [${pose}]: ${pDesc}\n\n`;
+  prompt += `STUDIO: ${isCU ? studioCUFixed : studioBody}\n\n`;
+  prompt += `WARDROBE: ${isCU ? wardrobeCUFixed : wardrobeBody}\n\n`;
+  prompt += `CONSISTENCY: ${consistencyFixed}\n`;
+  if (custom) prompt += `\nADDITIONAL INSTRUCTIONS: ${custom}\n`;
+
+  document.getElementById('aiPromptPreview').textContent = prompt;
+}
+
+function aiCopyPrompt() {
+  const t = document.getElementById('aiPromptPreview').textContent;
+  navigator.clipboard.writeText(t).then(() => toast('פרומפט הועתק! 📋'));
+}
+
+async function aiRunPipeline() {
+  if (!aiGeminiKey) { toast('חברי API key קודם'); return; }
+  const mid = parseInt(document.getElementById('aiModelSelect')?.value);
+  if (!mid) { toast('בחרי מודל קודם'); return; }
+
+  const prompt = document.getElementById('aiPromptPreview').textContent;
+  if (!prompt || prompt.includes('בחרי מודל')) { toast('הפרומפט ריק'); return; }
+
+  const outBody = document.getElementById('aiOutputBody');
+  const runBtn = document.getElementById('aiRunBtn');
+  runBtn.disabled = true;
+  runBtn.textContent = '⏳ Generating...';
+  outBody.innerHTML = '<div class="ai-generating"><div class="spinner"></div>Gemini מייצר תמונה...</div>';
+
+  try {
+    // Get image settings
+    const aspectRatio = document.getElementById('aiAspectRatio')?.value || '3:4';
+    const imageSize = document.getElementById('aiImageSize')?.value || '';
+
+    // Try multiple model names (Google changes them frequently)
+    const modelNames = [
+      'gemini-2.5-flash-image',
+      'gemini-3.1-flash-image-preview',
+      'gemini-2.0-flash-exp'
+    ];
+    
+    let data = null;
+    let usedModel = '';
+    
+    for (const modelName of modelNames) {
+      try {
+        // Build generation config with image_config
+        const genConfig = {
+          responseModalities: ["TEXT", "IMAGE"]
+        };
+        // Add image_config for aspect ratio and size
+        const imageConfig = {};
+        if (aspectRatio) imageConfig.aspect_ratio = aspectRatio;
+        if (imageSize) imageConfig.image_size = imageSize;
+        if (Object.keys(imageConfig).length > 0) {
+          genConfig.image_config = imageConfig;
+        }
+
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${aiGeminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: genConfig
+          })
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          const errMsg = errData.error?.message || `HTTP ${resp.status}`;
+          console.warn(`Model ${modelName} failed: ${errMsg}`);
+          continue; // Try next model
+        }
+
+        data = await resp.json();
+        usedModel = modelName;
+        break; // Success!
+      } catch(e) {
+        console.warn(`Model ${modelName} exception:`, e.message);
+        continue;
+      }
+    }
+
+    if (!data) {
+      throw new Error('כל המודלים נכשלו. בדקי שה-API key תקין ושיש לו הרשאת image generation.');
+    }
+    
+    // Extract image from response
+    let imageData = null;
+    let textResp = '';
+    
+    if (data.candidates && data.candidates[0]?.content?.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData) {
+          imageData = part.inlineData;
+        } else if (part.text) {
+          textResp = part.text;
+        }
+      }
+    }
+
+    if (imageData) {
+      const imgSrc = `data:${imageData.mimeType};base64,${imageData.data}`;
+      const m = MD.find(x => x.id === mid);
+      const pose = document.getElementById('aiPoseSelect').value;
+      
+      outBody.innerHTML = `
+        <img class="ai-output-img" src="${imgSrc}" alt="Generated"/>
+        <div style="margin-top:6px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">Model: ${usedModel}</div>
+        ${textResp ? `<div style="margin-top:4px;font-size:9px;color:var(--tx3);direction:ltr;text-align:left">${textResp.substring(0,200)}</div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <a href="${imgSrc}" download="${m?m.nm:'model'}_${pose}.png" class="btn btn-ghost" style="font-size:9px;text-decoration:none">💾 שמירה</a>
+          <button class="btn btn-ghost" style="font-size:9px" onclick="aiUploadToModel(${mid},'${pose}','${imgSrc.replace(/'/g,"\\'")}')">📤 העלאה לדשבורד</button>
+        </div>`;
+
+      // Add to history
+      aiHistory.unshift({ img: imgSrc, model: m?.nm || '?', pose, time: new Date().toLocaleTimeString('he-IL') });
+      aiRenderHistory();
+    } else {
+      outBody.innerHTML = `<div class="ai-error">Gemini לא החזיר תמונה. תגובה: ${textResp || 'ריקה'}<br><span style="font-size:9px">Model: ${usedModel}</span></div>`;
+    }
+  } catch (err) {
+    outBody.innerHTML = `<div class="ai-error">❌ שגיאה: ${err.message}</div>`;
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = '▶️ Generate';
+  }
+}
+
+function aiUploadToModel(mid, pose, imgSrc) {
+  // Convert base64 to blob and upload
+  fetch(imgSrc).then(r => r.blob()).then(blob => {
+    const file = new File([blob], `${mid}_${pose}.png`, { type: 'image/png' });
+    uploadImage(mid, pose, file);
+    toast(`תמונה הועלתה ל-${pose}! 📤`);
+  });
+}
+
+function aiRenderHistory() {
+  const el = document.getElementById('aiHistory');
+  if (!aiHistory.length) { el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:10px">עדיין לא נוצרו תמונות</div>'; return; }
+  el.innerHTML = aiHistory.map((h, i) => `
+    <div class="ai-hist-item" onclick="document.getElementById('aiOutputBody').innerHTML='<img class=\\'ai-output-img\\' src=\\'${h.img.substring(0,50)}...\\'/>'">
+      <img src="${h.img}" alt="${h.model}"/>
+      <div class="ai-hist-label">${h.model} · ${h.pose} · ${h.time}</div>
+    </div>`).join('');
+}
+
+function aiResetCanvas() {
+  document.getElementById('aiModelSelect').value = '';
+  document.getElementById('aiPoseSelect').value = 'Front';
+  document.getElementById('aiCustomPrompt').value = '';
+  document.getElementById('aiModelPreview').innerHTML = '';
+  document.getElementById('aiSpecsBody').innerHTML = '<div style="color:var(--tx3);font-size:9px">← בחרי מודל</div>';
+  document.getElementById('aiOutputBody').innerHTML = '<div class="ai-output-placeholder"><div style="font-size:32px;margin-bottom:8px">🎨</div><div>לחצי Generate כדי ליצור תמונה</div></div>';
+  aiAssemblePrompt();
+}
+
+function aiDrawWires() {
+  // Draw decorative connection wires between nodes
+  const svg = document.getElementById('aiWires');
+  if (!svg) return;
+  const wires = [
+    ['aiNode-model', 'aiNode-specs', 'var(--cy)'],
+    ['aiNode-model', 'aiNode-prompt', 'var(--ac)'],
+    ['aiNode-pose', 'aiNode-prompt', 'var(--gn)'],
+    ['aiNode-style', 'aiNode-prompt', 'var(--am)'],
+    ['aiNode-custom', 'aiNode-prompt', 'var(--pk)'],
+    ['aiNode-prompt', 'aiNode-output', 'var(--or)']
+  ];
+  let paths = '';
+  wires.forEach(([fromId, toId, color]) => {
+    const from = document.getElementById(fromId);
+    const to = document.getElementById(toId);
+    if (!from || !to) return;
+    const x1 = from.offsetLeft + from.offsetWidth;
+    const y1 = from.offsetTop + from.offsetHeight / 2;
+    const x2 = to.offsetLeft;
+    const y2 = to.offsetTop + to.offsetHeight / 2;
+    const midX = (x1 + x2) / 2;
+    paths += `<path d="M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}" fill="none" stroke="${color}" stroke-width="2" stroke-opacity=".3" stroke-dasharray="6,4"/>`;
+  });
+  svg.innerHTML = paths;
+}
+
+// Auto-assemble prompt when inputs change
+document.addEventListener('change', (e) => {
+  if (e.target.closest('#p-aiStudio')) aiAssemblePrompt();
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'aiCustomPrompt' || e.target.id === 'aiWardrobeCustom') aiAssemblePrompt();
+});
+
+// Make nodes draggable
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.ai-node-header').forEach(header => {
+    let isDragging = false, startX, startY, startLeft, startTop;
+    header.addEventListener('mousedown', (e) => {
+      const node = header.parentElement;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = node.offsetLeft;
+      startTop = node.offsetTop;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    function onMove(e) {
+      if (!isDragging) return;
+      const node = header.parentElement;
+      node.style.left = (startLeft + e.clientX - startX) + 'px';
+      node.style.top = (startTop + e.clientY - startY) + 'px';
+      aiDrawWires();
+    }
+    function onUp() { isDragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+  });
+});
+
+populateQCAModelSelector();
+
+async function boot(){
+  if(sb){
+    try{
+      const{data,error}=await sb.from('model_status').select('id',{count:'exact',head:true});
+      if(error){console.error('Connection test failed:',error);document.getElementById('connBanner').classList.add('show');document.getElementById('syncStatus').innerHTML='❌ שגיאת חיבור';isConnected=false}
+      else{console.log('Supabase connected OK')}
+    }catch(e){console.error('Connection error:',e)}
+  }
+  await loadAllData();
+  await autoAssign();
+  updateProgress();
+  fGal();
+  renderLiveGallery();
+  renderDataTable();
+  subscribeRealtime();
+  genPrompts();
+  document.getElementById('syncStatus').innerHTML=isConnected?'<span class="live-dot"></span> מחובר ב-Real-Time':'⚡ מצב מקומי';
+}
+boot();
+</script>
+</body>
+</html>
