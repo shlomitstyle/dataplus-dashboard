@@ -1844,21 +1844,47 @@ async function downloadCasting(format){
     if(format==='png'){
       const a=document.createElement('a');a.download=filename+'.png';a.href=canvas.toDataURL('image/png');
       document.body.appendChild(a);a.click();document.body.removeChild(a);toast(`\u2b07\ufe0f ${filename}.png`);
-    }else if(format==='pdf'){
-      const{jsPDF}=window.jspdf;
-      const imgData=canvas.toDataURL('image/jpeg',0.92);
-      const pxToMm=0.264583;const pdfW=canvas.width*pxToMm/2;const pdfH=canvas.height*pxToMm/2;
-      const maxPageH=297;const pageW=Math.min(pdfW,210);const scaleRatio=pageW/pdfW;const scaledH=pdfH*scaleRatio;
-      if(scaledH<=maxPageH){
-        const pdf=new jsPDF({orientation:pageW>scaledH?'l':'p',unit:'mm',format:[pageW,scaledH]});
-        pdf.addImage(imgData,'JPEG',0,0,pageW,scaledH);pdf.save(filename+'.pdf');
-      }else{
-        const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4'});
-        const a4W=210;const a4H=297;const imgScaleW=a4W;const imgScaleH=(canvas.height/canvas.width)*a4W;
-        let yOff=0;let pg=0;
-        while(yOff<imgScaleH){if(pg>0)pdf.addPage();pdf.addImage(imgData,'JPEG',0,-yOff,imgScaleW,imgScaleH);yOff+=a4H;pg++}
-        pdf.save(filename+'.pdf');
-      }
+    }}else if(format==='pdf'){
+  const { jsPDF } = window.jspdf;
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+  const pdfFormat = 'a4'; // תשני ל-'a3' אם צריך
+  const isA3 = pdfFormat === 'a3';
+
+  const pageW = isA3 ? 297 : 210;
+  const pageH = isA3 ? 420 : 297;
+
+  const pdf = new jsPDF({
+    orientation: 'p',
+    unit: 'mm',
+    format: pdfFormat
+  });
+
+  const margin = 0; // אפשר לשנות אם את רוצה שוליים
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
+
+  const imgRatio = canvas.width / canvas.height;
+  const pageRatio = usableW / usableH;
+
+  let renderW, renderH;
+
+  if (imgRatio > pageRatio) {
+    renderW = usableW;
+    renderH = usableW / imgRatio;
+  } else {
+    renderH = usableH;
+    renderW = usableH * imgRatio;
+  }
+
+  const offsetX = (pageW - renderW) / 2;
+  const offsetY = (pageH - renderH) / 2;
+
+  pdf.addImage(imgData, 'JPEG', offsetX, offsetY, renderW, renderH);
+  pdf.save(filename + '.pdf');
+
+  toast(`⬇️ ${filename}.pdf`);
+}
       toast(`\u2b07\ufe0f ${filename}.pdf`);
     }
   }catch(e){console.error('Export error:',e);toast('\u05e9\u05d2\u05d9\u05d0\u05d4 \u05d1\u05d9\u05d9\u05e6\u05d5\u05d0 \u2014 '+e.message)}
