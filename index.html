@@ -322,8 +322,8 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
           <div class="overlay-canvas-wrap" id="otCanvasWrap">
             <div class="oc-placeholder" id="otPlaceholder">
               <div style="font-size:32px;margin-bottom:8px;opacity:.3">🔬</div>
-              <div>בחרי מודל והעלי תמונה כדי להתחיל</div>
-              <div style="font-size:10px;color:var(--tx3);margin-top:4px">התמונה שהועלתה תוצג בשקיפות מעל הסילואט הטכני</div>
+              <div>בחרי מודל — הסילואט הטכני יופיע אוטומטית</div>
+              <div style="font-size:10px;color:var(--tx3);margin-top:4px">העלי תמונה שנוצרה כדי להשוות אותה מעל הסילואט</div>
             </div>
             <canvas id="otCanvas" width="600" height="800" style="display:none"></canvas>
           </div>
@@ -1087,10 +1087,13 @@ const SILHOUETTE_IMAGE_URLS={
 
 // Preload silhouette images
 let silImages={};
+let silImagesLoaded=0;
 !function(){
   Object.keys(SILHOUETTE_IMAGE_URLS).forEach(sz=>{
     const img=new Image();
     img.crossOrigin='anonymous';
+    img.onload=()=>{silImagesLoaded++;otRedraw()};
+    img.onerror=()=>{console.warn('Failed to load silhouette:',sz)};
     img.src=SILHOUETTE_IMAGE_URLS[sz];
     silImages[sz]=img;
   });
@@ -1268,7 +1271,16 @@ function otRedraw(){
 
   // Draw the SPEC SILHOUETTE IMAGE first (background)
   if(spec&&sz){
-    otDrawSilhouette(ctx,spec,otSelectedModel,sz,cW,cH,scale,offsetY);
+    const silImg=silImages[sz];
+    if(silImg&&silImg.complete&&silImg.naturalWidth){
+      otDrawSilhouette(ctx,spec,otSelectedModel,sz,cW,cH,scale,offsetY);
+    } else {
+      // Show loading text while image loads
+      ctx.fillStyle='rgba(139,92,246,0.5)';
+      ctx.font='14px Outfit';
+      ctx.textAlign='center';
+      ctx.fillText('⏳ טוען סילואט '+sz+'...',cW/2,cH/2);
+    }
   }
 
   // Draw uploaded/generated image on top with adjustable opacity
