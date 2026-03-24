@@ -1644,6 +1644,94 @@ async function captureScreen(){
   }
 }
 
+
+const __trimmedImageCache = new Map();
+
+function loadImageForTrim(src){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function getTrimmedImage(src, opts={}){
+  if(!src) return '';
+  const mode = opts.mode || 'full';
+  const cacheKey = `${mode}::${src}`;
+  if(__trimmedImageCache.has(cacheKey)) return __trimmedImageCache.get(cacheKey);
+  try{
+    const img = await loadImageForTrim(src);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const threshold = 245;
+    let top = height, bottom = -1, left = width, right = -1;
+
+    for(let y=0; y<height; y++){
+      for(let x=0; x<width; x++){
+        const i = (y * width + x) * 4;
+        const a = data[i+3];
+        const r = data[i], g = data[i+1], b = data[i+2];
+        const isWhite = a < 8 || (r > threshold && g > threshold && b > threshold);
+        if(!isWhite){
+          if(y < top) top = y;
+          if(y > bottom) bottom = y;
+          if(x < left) left = x;
+          if(x > right) right = x;
+        }
+      }
+    }
+
+    if(bottom === -1 || right === -1){
+      __trimmedImageCache.set(cacheKey, src);
+      return src;
+    }
+
+    const padX = mode === 'hero' ? 18 : mode === 'thumb' ? 10 : 12;
+    const padTop = mode === 'canvas' ? 10 : 14;
+    const padBottom = mode === 'canvas' ? 6 : 10;
+
+    left = Math.max(0, left - padX);
+    right = Math.min(width - 1, right + padX);
+    top = Math.max(0, top - padTop);
+    bottom = Math.min(height - 1, bottom + padBottom);
+
+    const cropW = Math.max(1, right - left + 1);
+    const cropH = Math.max(1, bottom - top + 1);
+    const out = document.createElement('canvas');
+    out.width = cropW;
+    out.height = cropH;
+    out.getContext('2d').drawImage(canvas, left, top, cropW, cropH, 0, 0, cropW, cropH);
+    const trimmed = out.toDataURL('image/png');
+    __trimmedImageCache.set(cacheKey, trimmed);
+    return trimmed;
+  }catch(err){
+    console.warn('Trim failed for image', src, err);
+    __trimmedImageCache.set(cacheKey, src);
+    return src;
+  }
+}
+
+function escHtml(v){
+  return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function getCastingCardData(m){
+  const wt = WT[m.id] || {w:'?', d:'?'};
+  const frontImg = dbImages[m.id+'_Front'] || '';
+  const closeupImg = dbImages[m.id+'_Close-Up'] || '';
+  const mainImg = frontImg || closeupImg;
+  const existingPoses = allPoses.filter(p => dbImages[m.id+'_'+p]);
+  return { wt, frontImg, closeupImg, mainImg, existingPoses };
+}
+
 // ══════════════════════════════════════
 // ═══ CANVAS TAB — HEIGHT COMPARISON ═══
 // ══════════════════════════════════════
@@ -1656,7 +1744,8 @@ async function captureScreen(){
   });
 }();
 
-function renderCanvas(){
+
+async function renderCanvas(){
   const sz=document.getElementById('canvasSize').value;
   const bd=document.getElementById('canvasBody').value;
   const spec=SILHOUETTE_SPEC[sz];
@@ -1666,95 +1755,106 @@ function renderCanvas(){
   if(bd)models=models.filter(m=>m.bd===bd);
   models.sort((a,b)=>a.h-b.h);
 
-  if(!models.length){document.getElementById('canvasModels').innerHTML='<div style="color:var(--tx3);padding:40px;text-align:center">אין מודלים</div>';document.getElementById('canvasScale').innerHTML='';document.getElementById('canvasTable').innerHTML='';return}
+  const modelsEl = document.getElementById('canvasModels');
+  const scaleEl = document.getElementById('canvasScale');
+  const tableEl = document.getElementById('canvasTable');
 
-  // Height scale — calculate range to show real height differences
+  if(!models.length){
+    modelsEl.innerHTML='<div style="color:var(--tx3);padding:40px;text-align:center">אין מודלים</div>';
+    scaleEl.innerHTML='';
+    tableEl.innerHTML='';
+    return;
+  }
+
   const heights=models.map(m=>m.h);
   const minH=Math.min(...heights)-3;
   const maxH=Math.max(...heights)+3;
   const range=maxH-minH||10;
-  const containerH=500; // px total height for the display area
+  const containerH=500;
 
-  // Scale sidebar
-  const scaleEl=document.getElementById('canvasScale');
   let scaleHtml='';
   for(let h=Math.ceil(maxH);h>=Math.floor(minH);h-=2){
     const pct=((maxH-h)/range)*100;
     const isMajor=h%5===0;
     scaleHtml+=`<div style="position:absolute;top:${pct}%;left:0;right:0;border-top:1px ${isMajor?'solid':'dotted'} ${isMajor?'var(--bd)':'rgba(255,255,255,.03)'}"><span style="position:absolute;left:4px;top:-7px;font-size:${isMajor?'9':'7'}px;color:${isMajor?'var(--tx2)':'var(--tx3)'};font-family:'JetBrains Mono',monospace;font-weight:${isMajor?'700':'400'}">${h}</span></div>`;
   }
-  // Spec reference line
   const specPct=((maxH-spec.height)/range)*100;
   scaleHtml+=`<div style="position:absolute;top:${specPct}%;left:0;right:0;border-top:2px dashed ${spec.color};z-index:2"><span style="position:absolute;right:2px;top:-14px;font-size:7px;color:${spec.color};font-weight:700;font-family:'JetBrains Mono',monospace">SPEC ${spec.height}</span></div>`;
   scaleEl.style.background=`linear-gradient(180deg,${spec.color}12,transparent)`;
   scaleEl.style.height=containerH+'px';
   scaleEl.innerHTML=scaleHtml;
 
-  // Model figures — positioned by REAL height with proportional sizing
-  const container=document.getElementById('canvasModels');
-  container.style.height=containerH+'px';
-  container.style.alignItems='flex-end';
-  container.style.position='relative';
+  modelsEl.style.height=containerH+'px';
+  modelsEl.style.alignItems='flex-end';
+  modelsEl.style.position='relative';
 
-  // Each model gets a column. Height of the figure image is proportional to actual height
-  const figBaseH=containerH*0.85; // max figure height in px (for tallest model)
+  const figBaseH=containerH*0.86;
   const tallest=Math.max(...heights);
 
-  container.innerHTML=models.map(m=>{
-    const frontImg=dbImages[m.id+'_Front']||'';
-    // Figure height proportional to actual height
+  const trimmedMap = {};
+  await Promise.all(models.map(async m => {
+    const frontImg = dbImages[m.id+'_Front'] || '';
+    trimmedMap[m.id] = frontImg ? await getTrimmedImage(frontImg, {mode:'canvas'}) : '';
+  }));
+
+  modelsEl.innerHTML=models.map(m=>{
+    const frontImg=trimmedMap[m.id] || '';
     const figH=Math.round((m.h/tallest)*figBaseH);
-    // Keep a natural portrait ratio for the image frame so it does not look squeezed
-    const figW=Math.max(150, Math.round(figH*0.62));
-    const colW=figW+24;
+    const figW=Math.max(120, Math.round(figH*0.56));
+    const colW=figW+28;
     const heightDiff=m.h-spec.height;
     const diffColor=heightDiff>0?'var(--gn)':heightDiff<0?'var(--rs)':'var(--tx2)';
     const diffSign=heightDiff>0?'+':'';
 
-    return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:${colW}px">
-      <div style="height:${figH}px;width:${figW}px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:visible;border-radius:8px 8px 0 0;box-sizing:border-box;background:transparent">
-        ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block"/>`
-        :`<div style="height:100%;width:100%;background:linear-gradient(180deg,var(--sf2),var(--sf3));display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.2;border-radius:8px 8px 0 0">👤</div>`}
+    return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex-shrink:0;width:${colW}px;height:${containerH}px">
+      <div style="height:${figH}px;width:${figW}px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;border-radius:10px 10px 0 0;background:transparent">
+        ${frontImg
+          ? `<img src="${frontImg}" style="height:100%;width:100%;object-fit:contain;object-position:center bottom;display:block"/>`
+          : `<div style="height:100%;width:100%;background:linear-gradient(180deg,var(--sf2),var(--sf3));display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.2;border-radius:10px 10px 0 0">👤</div>`}
       </div>
       <div style="width:${figW}px;height:2px;background:${spec.color}60;border-radius:1px"></div>
-      <div style="text-align:center;padding:6px 0;width:100%">
-        <div style="font-size:11px;font-weight:800;color:${m.cl}">${m.nm}</div>
-        <div style="font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">#${m.id} · ${m.sz}</div>
-        <div style="font-size:13px;font-weight:800;color:var(--tx);margin-top:2px;font-family:'JetBrains Mono',monospace">${m.h}cm</div>
-        <div style="font-size:8px;color:${diffColor};font-weight:700;font-family:'JetBrains Mono',monospace">${diffSign}${heightDiff}cm vs spec</div>
+      <div style="text-align:center;padding:8px 0 0;width:100%">
+        <div style="font-size:11px;font-weight:800;color:${m.cl}">${escHtml(m.nm)}</div>
+        <div style="font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">XS ${m.sz ? '·' : ''} #${m.id}</div>
+        <div style="font-size:10px;font-weight:800;color:var(--tx);margin-top:4px">${m.h}cm</div>
+        <div style="font-size:9px;font-weight:800;color:${diffColor};font-family:'JetBrains Mono',monospace">${diffSign}${heightDiff}cm vs spec</div>
       </div>
     </div>`;
   }).join('');
 
-  // Simplified table - just name, ID, size, height
-  document.getElementById('canvasTable').innerHTML=`
-    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-top:16px">
-      <div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;font-weight:700;color:${spec.color}">${sz} — ${models.length} Models · Spec height: ${spec.height}cm</span>
-      </div>
-      <div class="tw"><table style="width:100%;border-collapse:collapse;font-size:11px;direction:ltr;text-align:left">
-        <thead><tr style="background:var(--sf2)">
-          <th style="padding:8px 12px;font-weight:600;color:var(--tx2);font-size:9px">Name</th>
-          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">ID</th>
-          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Size</th>
-          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Height</th>
-          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Δ Spec</th>
-        </tr></thead>
+  tableEl.innerHTML=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="font-size:11px;font-weight:800;color:${spec.color}">${sz} - ${models.length} Models · Spec height: ${spec.height}cm</div>
+    </div>
+    <div style="overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <thead>
+          <tr style="background:var(--sf2);text-align:left">
+            <th style="padding:8px 12px;color:var(--tx3);font-size:8px;font-family:'JetBrains Mono',monospace">NAME</th>
+            <th style="padding:8px 12px;color:var(--tx3);font-size:8px;font-family:'JetBrains Mono',monospace">ID</th>
+            <th style="padding:8px 12px;color:var(--tx3);font-size:8px;font-family:'JetBrains Mono',monospace">SIZE</th>
+            <th style="padding:8px 12px;color:var(--tx3);font-size:8px;font-family:'JetBrains Mono',monospace">HEIGHT</th>
+            <th style="padding:8px 12px;color:var(--tx3);font-size:8px;font-family:'JetBrains Mono',monospace">Δ SPEC</th>
+          </tr>
+        </thead>
         <tbody>${models.map(m=>{const d=m.h-spec.height;const dc=d>0?'var(--gn)':d<0?'var(--rs)':'var(--tx2)';return `<tr style="border-top:1px solid var(--bd)">
-          <td style="padding:6px 12px;font-weight:700;color:${m.cl}">${m.nm}</td>
+          <td style="padding:6px 12px;font-weight:700;color:${m.cl}">${escHtml(m.nm)}</td>
           <td style="padding:6px 12px;color:var(--tx3);font-family:'JetBrains Mono',monospace">#${m.id}</td>
           <td style="padding:6px 12px"><span style="background:${spec.color}20;color:${spec.color};padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700">${m.sz}</span></td>
           <td style="padding:6px 12px;font-weight:700;font-family:'JetBrains Mono',monospace">${m.h}cm</td>
           <td style="padding:6px 12px;font-weight:700;color:${dc};font-family:'JetBrains Mono',monospace">${d>0?'+':''}${d}cm</td>
         </tr>`}).join('')}</tbody>
-      </table></div>
-    </div>`;
+      </table>
+    </div>
+  </div>`;
 }
+
 
 // ══════════════════════════════════════
 // ═══ CASTING SHEET — EXPORT ═══
 // ══════════════════════════════════════
-function renderCasting(){
+
+async function renderCasting(){
   const sz=document.getElementById('castingSize').value;
   const status=document.getElementById('castingStatus').value;
   const bd=document.getElementById('castingBody')?.value||'';
@@ -1777,165 +1877,133 @@ function renderCasting(){
   if(status==='done')models=models.filter(m=>getDoneCount(m.id)===6);
   models.sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);if(ai!==bi)return ai-bi;return a.h-b.h});
 
-  const PAGE_W=1122;
-  const PAGE_H=794;
-  const groups=SO.map(size=>{
-    const list=models.filter(m=>m.sz===size);
-    return {size,list,spec:SILHOUETTE_SPEC[size]||{color:'#888',desc:''}};
-  }).filter(g=>g.list.length);
+  const groups=SO.map(size=>({
+    size,
+    list:models.filter(m=>m.sz===size),
+    spec:SILHOUETTE_SPEC[size]||{color:'#888',desc:''}
+  })).filter(g=>g.list.length);
+
+  const trimMain = {};
+  const trimThumb = {};
+  await Promise.all(models.flatMap(m=>{
+    const { mainImg, existingPoses } = getCastingCardData(m);
+    const jobs = [];
+    if(mainImg){
+      jobs.push(getTrimmedImage(mainImg,{mode:'hero'}).then(v=>{trimMain[m.id]=v;}));
+    }
+    existingPoses.slice(0,5).forEach(p=>{
+      const src = dbImages[m.id+'_'+p];
+      if(src){
+        jobs.push(getTrimmedImage(src,{mode:'thumb'}).then(v=>{trimThumb[m.id+'_'+p]=v;}));
+      }
+    });
+    return jobs;
+  }));
 
   const buildCard=(m)=>{
-    const wt=WT[m.id]||{w:'?',d:'?'};
-    const frontImg=dbImages[m.id+'_Front']||'';
-    const closeupImg=dbImages[m.id+'_Close-Up']||'';
-    const mainImg=frontImg||closeupImg;
-    const existingPoses=allPoses.filter(p=>dbImages[m.id+'_'+p]);
-    const poseImgs=existingPoses.slice(0,5).map(p=>`<div style="width:46px;height:58px;border-radius:8px;overflow:hidden;background:#f7f7f7;display:flex;align-items:center;justify-content:center"><img src="${dbImages[m.id+'_'+p]}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block" title="${p}"/></div>`).join('');
+    const { wt, mainImg, existingPoses } = getCastingCardData(m);
+    const hero=trimMain[m.id] || mainImg;
     let info='';
     if(showHeight)info+=`Height: ${m.h}cm<br>`;
     if(showWeight)info+=`Weight: ~${wt.w}kg (${wt.d})<br>`;
     if(showMeasure)info+=`B${m.bu} / W${m.wa} / H${m.hp}cm<br>`;
     if(showInseam&&m.ins)info+=`Inseam: ${m.ins}cm<br>`;
+    const attrText=showAttrs?`${m.bd}/${m.sk}/${m.hr}${m.ey?`<br>Eyes: ${m.ey}`:''}`:'';
+    const poseThumbs=showPoses?existingPoses.slice(0,5).map(p=>`<div style="width:54px;height:74px;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #ece7e9;display:flex;align-items:center;justify-content:center">
+      <img src="${trimThumb[m.id+'_'+p] || dbImages[m.id+'_'+p]}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff" title="${escHtml(p)}"/>
+    </div>`).join(''):'';
 
-    return `<article class="casting-card" style="background:#fff;border-radius:14px;overflow:hidden;height:260px;box-sizing:border-box;border:1px solid #ececec;display:grid;grid-template-rows:1fr auto;break-inside:avoid;page-break-inside:avoid">
-      <div style="display:grid;grid-template-columns:140px 1fr;gap:14px;padding:14px 14px 10px;align-items:start;min-height:0">
-        <div style="width:140px;height:182px;background:#f6f6f6;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center">
-          ${mainImg?`<img src="${mainImg}" style="width:100%;height:100%;object-fit:cover;object-position:center top;background:#fff;display:block"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;color:#ccc">👤</div>`}
+    return `<article style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid #ddd6d8;box-shadow:0 1px 0 rgba(0,0,0,.02);min-height:332px;display:flex;flex-direction:column;break-inside:avoid-page;page-break-inside:avoid">
+      <div style="display:grid;grid-template-columns:1fr 148px;gap:12px;padding:14px 14px 12px;align-items:start;min-height:214px">
+        <div style="text-align:center;padding-top:2px">
+          <div style="font-size:12px;color:#8a8a8a;margin-bottom:2px">${m.sz} · #${m.id}</div>
+          <div style="font-size:20px;font-weight:800;line-height:1.05;color:#1a1a1a;margin-bottom:8px">${escHtml(m.nm)}</div>
+          <div style="font-size:12px;line-height:1.45;color:#444">${info}</div>
+          ${showAttrs?`<div style="font-size:11px;line-height:1.35;color:#6a6a6a;margin-top:6px">${attrText}</div>`:''}
+          <div style="font-size:10px;color:#aaa;margin-top:6px">poses ${existingPoses.length}/6</div>
         </div>
-        <div style="min-width:0;padding-top:2px;display:flex;flex-direction:column;height:100%">
-          <div style="font-size:10px;color:#999;font-family:monospace">#${m.id} · ${m.sz}</div>
-          <div style="font-size:18px;font-weight:800;color:#222;margin:3px 0 6px;line-height:1.1">${m.nm}</div>
-          ${info?`<div style="font-size:11px;color:#555;line-height:1.5">${info}</div>`:''}
-          ${showAttrs?`<div style="font-size:9px;color:#888;margin-top:6px;line-height:1.4">${cap(m.bd)} · ${cap(m.sk)} · ${m.eth} · ${m.hr} · ${m.ey}</div>`:''}
-          <div style="margin-top:auto;font-size:9px;color:#b0b0b0">${existingPoses.length}/${allPoses.length} poses</div>
+        <div style="width:148px;height:188px;border-radius:10px;overflow:hidden;background:#fff;border:1px solid #ece7e9;display:flex;align-items:center;justify-content:center">
+          ${hero?`<img src="${hero}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#b5b5b5;font-size:12px;background:#fafafa">No image</div>`}
         </div>
       </div>
-      ${showPoses?`<div style="padding:10px 14px 14px;border-top:1px solid #f0f0f0;display:flex;gap:6px;justify-content:flex-start;min-height:79px;box-sizing:border-box">${poseImgs||'<div style="font-size:10px;color:#bbb;display:flex;align-items:center">No pose thumbs</div>'}</div>`:''}
+      ${showPoses?`<div style="border-top:1px solid #eee7e9;padding:10px 12px"><div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">${poseThumbs || '<div style="font-size:11px;color:#b5b5b5">No pose images</div>'}</div></div>`:''}
     </article>`;
   };
 
-  const buildHeader=(group)=>`<div style="height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:${group.spec.color}15;border-radius:10px;color:${group.spec.color};font-size:14px;font-weight:800;box-sizing:border-box"><span>${group.size} - ${group.spec.desc||''}</span><span style="font-size:11px;opacity:.75">${group.list.length} models</span></div>`;
-
-  // pack pages by actual rendered block height estimation to keep all pages identical and avoid cutoff
-  const MAX_BODY_H = 640;
-  const HEADER_H = 42;
-  const GRID_GAP = 14;
-  const ROW_H = showPoses ? 260 : 182;
-  const ROW_BLOCK_H = ROW_H + GRID_GAP;
-
-  const pages=[];
-  let current={blocks:[], used:0};
-  const pushPage=()=>{ if(current.blocks.length){ pages.push(current); current={blocks:[], used:0}; } };
-  const canFit=(needed)=> current.used + needed <= MAX_BODY_H;
-
-  groups.forEach(group=>{
-    let idx=0;
-    while(idx<group.list.length){
-      const remaining=group.list.length-idx;
-      const cardsThisBlock=Math.min(remaining, 3);
-      const rows=Math.ceil(cardsThisBlock/3);
-      const blockH = HEADER_H + 10 + (rows*ROW_H) + ((rows-1)*GRID_GAP);
-
-      if(current.blocks.length && !canFit(blockH + 14)) pushPage();
-
-      // after page break, allow up to 6 cards of same group if they fit in two rows with one header
-      let take=cardsThisBlock;
-      let trialRows=Math.ceil(take/3);
-      let trialH=HEADER_H + 10 + (trialRows*ROW_H) + ((trialRows-1)*GRID_GAP);
-      if((group.list.length-idx)>=6 && canFit((current.blocks.length?14:0) + HEADER_H + 10 + (2*ROW_H) + GRID_GAP)){
-        take=6;
-        trialRows=2;
-        trialH=HEADER_H + 10 + (2*ROW_H) + GRID_GAP;
-      } else if((group.list.length-idx)>=4 && canFit((current.blocks.length?14:0) + HEADER_H + 10 + (2*ROW_H) + GRID_GAP)){
-        take=Math.min(remaining,6);
-        trialRows=Math.ceil(take/3);
-        trialH=HEADER_H + 10 + (trialRows*ROW_H) + ((trialRows-1)*GRID_GAP);
-        if(!canFit((current.blocks.length?14:0)+trialH)) take=3, trialRows=1, trialH=HEADER_H + 10 + ROW_H;
-      }
-
-      current.blocks.push({group, cards:group.list.slice(idx, idx+take)});
-      current.used += (current.blocks.length>1?14:0) + trialH;
-      idx += take;
-      if(current.used >= MAX_BODY_H-ROW_H) pushPage();
-    }
-  });
-  pushPage();
-
-  const sheet=document.getElementById('castingSheet');
-  let html='';
-  pages.forEach((page,pageIndex)=>{
-    html+=`<div class="casting-page-wrap" style="width:${PAGE_W}px;margin:0 auto 20px;background:transparent;padding:0">
-      <div class="casting-page" style="background:#fff;width:${PAGE_W}px;height:${PAGE_H}px;margin:0;box-sizing:border-box;overflow:hidden;padding:18px 22px 16px;break-after:page;page-break-after:always;border:none;box-shadow:none">
-        <div style="height:72px;text-align:center;margin:0 0 14px;padding:0 0 12px;border-bottom:1px solid #e8e8e8;box-sizing:border-box">
-          <h1 style="font-size:24px;font-weight:900;margin:0;color:#111;line-height:1.15">FY26 Casting Models - Batch 1 (${models.length} Models)</h1>
-          <p style="font-size:12px;color:#666;margin:6px 0 0">Black tank + black biker shorts | White studio | 5 poses per model | A4 landscape</p>
-        </div>
-        <div style="height:640px;display:flex;flex-direction:column;gap:14px;overflow:hidden">`;
-    page.blocks.forEach(block=>{
-      html+=`<section style="display:flex;flex-direction:column;gap:10px;break-inside:avoid;page-break-inside:avoid">`;
-      html+=buildHeader(block.group);
-      html+=`<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start">`;
-      block.cards.forEach(model=>{ html+=buildCard(model); });
-      html+=`</div></section>`;
-    });
-    html+=`</div>`;
-    html+=`<div style="height:20px;margin-top:14px;padding-top:8px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box">
-      <span style="font-size:10px;color:#aaa">Generated ${new Date().toLocaleDateString()}</span>
-      ${showLogo?`<span style="font-size:14px;font-weight:800;color:#333">Data<span style="color:#8b5cf6">Plus</span> × Walmart</span>`:`<span></span>`}
-    </div>
+  const html = `
+    <div style="background:#f6f3f4;color:#222;border-radius:18px;padding:28px 28px 36px;overflow:visible">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.15;color:#111">FY26 Casting Models - Batch 1 | ${models.length} Models</div>
+        <div style="font-size:14px;color:#555;margin-top:6px">Black tank + black biker shorts | White studio | 5 poses per model</div>
       </div>
+      <div style="height:2px;background:#e3dddd;margin:16px 0 22px;border-radius:999px"></div>
+      ${groups.map(g=>`
+        <section style="margin-bottom:30px;break-inside:avoid;page-break-inside:avoid">
+          <div style="background:#f3e8ec;color:${g.spec.color};font-size:13px;font-weight:800;padding:10px 16px;border-radius:8px;text-align:right;margin-bottom:18px">${g.size} - ${escHtml(g.spec.desc||'')}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:start">
+            ${g.list.map(buildCard).join('')}
+          </div>
+        </section>`).join('')}
+      ${showLogo?`<div style="margin-top:24px;text-align:center;font-size:11px;color:#999;font-weight:700;letter-spacing:.08em">DataPlus Casting Sheet</div>`:''}
     </div>`;
-  });
-  sheet.innerHTML=html;
+
+  document.getElementById('castingSheet').innerHTML=html;
 }
 
+
+async 
 async function downloadCasting(format){
   toast('⏳ מייצר '+format.toUpperCase()+'...');
   const el=document.getElementById('castingSheet');
-  if(!el.innerHTML)renderCasting();
+  if(!el.innerHTML) await renderCasting();
   try{
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,500));
     const timestamp=new Date().toISOString().slice(0,10);
     const sz=document.getElementById('castingSize').value;
     const filename=`DataPlus_CastingSheet${sz?'_'+sz:''}_${timestamp}`;
 
-    const pages=[...el.querySelectorAll('.casting-page')];
-    if(!pages.length) throw new Error('No casting pages found');
+    const canvas=await html2canvas(el,{
+      backgroundColor:'#ffffff',
+      scale:3,
+      useCORS:true,
+      allowTaint:true,
+      logging:false,
+      width:el.scrollWidth,
+      height:el.scrollHeight,
+      windowWidth:el.scrollWidth,
+      windowHeight:el.scrollHeight,
+      scrollX:0,
+      scrollY:0
+    });
 
     if(format==='png'){
-      for(let i=0;i<pages.length;i++){
-        const page=pages[i];
-        const canvas=await html2canvas(page,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:true,logging:false,width:page.offsetWidth,height:page.offsetHeight,windowWidth:page.offsetWidth,windowHeight:page.offsetHeight,scrollX:0,scrollY:0});
-        const a=document.createElement('a');
-        a.download=pages.length===1?`${filename}.png`:`${filename}_page_${i+1}.png`;
-        a.href=canvas.toDataURL('image/png');
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-      toast(`⬇️ ${filename}${pages.length===1?'.png':'_page_X.png'}`);
+      const a=document.createElement('a');
+      a.download=filename+'.png';
+      a.href=canvas.toDataURL('image/png');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast(`⬇️ ${filename}.png`);
       return;
     }
 
     if(format==='pdf'){
       const { jsPDF } = window.jspdf;
-      const pdf=new jsPDF({orientation:'l',unit:'mm',format:'a4',compress:true});
-      const pageW=297;
-      const pageH=210;
-
-      for(let i=0;i<pages.length;i++){
-        const page=pages[i];
-        const canvas=await html2canvas(page,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:true,logging:false,width:page.offsetWidth,height:page.offsetHeight,windowWidth:page.offsetWidth,windowHeight:page.offsetHeight,scrollX:0,scrollY:0});
-        const imgData=canvas.toDataURL('image/png');
-        if(i>0) pdf.addPage('a4','l');
-        pdf.addImage(imgData,'PNG',0,0,pageW,pageH,undefined,'FAST');
-      }
-
+      const pxToMm=0.264583;
+      const pdfW=canvas.width*pxToMm/3;
+      const pdfH=canvas.height*pxToMm/3;
+      const orientation=pdfW>pdfH?'l':'p';
+      const pdf=new jsPDF({orientation,unit:'mm',format:[pdfW,pdfH],compress:true});
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,pdfW,pdfH,undefined,'FAST');
       pdf.save(filename+'.pdf');
       toast(`⬇️ ${filename}.pdf`);
     }
-  }catch(e){console.error('Export error:',e);toast('שגיאה בייצוא - '+e.message)}
+  }catch(e){
+    console.error('Export error:',e);
+    toast('שגיאה בייצוא - '+e.message);
+  }
 }
+
 
 // ═══════════════════════════════════════════════════
 // ═══ AI STUDIO — Gemini Image Generation ═══
