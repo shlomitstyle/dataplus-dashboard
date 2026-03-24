@@ -1777,150 +1777,146 @@ function renderCasting(){
   if(status==='done')models=models.filter(m=>getDoneCount(m.id)===6);
   models.sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);if(ai!==bi)return ai-bi;return a.h-b.h});
 
-  const sheet=document.getElementById('castingSheet');
-  let html=`<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #ddd">
-    <h1 style="font-size:26px;font-weight:900;margin:0;color:#111">FY26 Casting Models - Batch 1 (${models.length} Models)</h1>
-    <p style="font-size:12px;color:#666;margin:4px 0 0">Black tank + black biker shorts | White studio | 5 poses per model</p>
-  </div>`;
-
+  const grouped=[];
   let currentSz='';
-  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">`;
-  models.forEach((m,idx)=>{
+  models.forEach(m=>{
     if(m.sz!==currentSz){
       currentSz=m.sz;
       const spec=SILHOUETTE_SPEC[m.sz]||{color:'#888',desc:''};
-      if(idx>0)html+=`<div style="grid-column:1/-1;height:1px"></div>`;
-      html+=`<div style="grid-column:1/-1;padding:6px 12px;background:${spec.color}15;border-right:3px solid ${spec.color};border-radius:4px;font-size:12px;font-weight:800;color:${spec.color}">${m.sz} — ${spec.desc||''}</div>`;
+      grouped.push({type:'header',sz:m.sz,spec});
     }
+    grouped.push({type:'card',model:m});
+  });
+
+  const pages=[];
+  let page=[];
+  let units=0;
+  const MAX_UNITS=10;
+  grouped.forEach((item,idx)=>{
+    const next=grouped[idx+1];
+    const cost=item.type==='header'?1:2;
+    const needsPair=item.type==='header' && next && next.type==='card';
+    const pairCost=needsPair?3:cost;
+    if(page.length && units + (item.type==='header'?pairCost:cost) > MAX_UNITS){
+      pages.push(page);
+      page=[];
+      units=0;
+    }
+    page.push(item);
+    units+=cost;
+  });
+  if(page.length)pages.push(page);
+
+  const buildCard=(m)=>{
     const wt=WT[m.id]||{w:'?',d:'?'};
     const frontImg=dbImages[m.id+'_Front']||'';
     const closeupImg=dbImages[m.id+'_Close-Up']||'';
     const mainImg=frontImg||closeupImg;
     const existingPoses=allPoses.filter(p=>dbImages[m.id+'_'+p]);
-    const poseImgs=existingPoses.map(p=>`<img src="${dbImages[m.id+'_'+p]}" style="width:44px;height:58px;object-fit:cover;object-position:center center;border-radius:3px;border:1px solid #ddd;background:#fff;display:block" title="${p}"/>`).join('');
+    const poseImgs=existingPoses.map(p=>`<div style="width:56px;height:56px;border-radius:6px;overflow:hidden;border:1px solid #ddd;background:#fff;display:flex;align-items:center;justify-content:center"><img src="${dbImages[m.id+'_'+p]}" style="width:100%;height:100%;object-fit:cover;object-position:center center;display:block" title="${p}"/></div>`).join('');
     let info='';
     if(showHeight)info+=`Height: ${m.h}cm<br>`;
     if(showWeight)info+=`Weight: ~${wt.w}kg (${wt.d})<br>`;
     if(showMeasure)info+=`B${m.bu} / W${m.wa} / H${m.hp}cm<br>`;
     if(showInseam&&m.ins)info+=`Inseam: ${m.ins}cm<br>`;
-    html+=`<div style="background:#fafafa;border:1px solid #ddd;border-radius:8px;overflow:hidden;page-break-inside:avoid">
-      <div style="display:flex;gap:10px;padding:10px">
-        <div style="width:85px;height:115px;background:#eee;border-radius:6px;overflow:hidden;flex-shrink:0">
+
+    return `<div style="background:#fafafa;border:1px solid #ddd;border-radius:10px;overflow:hidden;break-inside:avoid;page-break-inside:avoid;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+      <div style="display:grid;grid-template-columns:108px 1fr;gap:12px;padding:12px;align-items:start">
+        <div style="width:108px;height:132px;background:#f2f2f2;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${mainImg?`<img src="${mainImg}" style="width:100%;height:100%;object-fit:cover;object-position:center center;background:#fff;display:block"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#ccc">👤</div>`}
         </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:9px;color:#999;font-family:monospace">#${m.id} \u00b7 ${m.sz}</div>
-          <div style="font-size:14px;font-weight:800;color:#222;margin:2px 0">${m.nm}</div>
-          ${info?`<div style="font-size:10px;color:#555;line-height:1.5">${info}</div>`:''}
-          ${showAttrs?`<div style="font-size:8px;color:#888;margin-top:2px">${cap(m.bd)} \u00b7 ${cap(m.sk)} \u00b7 ${m.eth} \u00b7 ${m.hr} \u00b7 ${m.ey}</div>`:''}
-          <div style="font-size:7px;color:#bbb;margin-top:2px">${existingPoses.length}/${allPoses.length} poses</div>
+        <div style="min-width:0">
+          <div style="font-size:10px;color:#999;font-family:monospace">#${m.id} · ${m.sz}</div>
+          <div style="font-size:14px;font-weight:800;color:#222;margin:2px 0 4px">${m.nm}</div>
+          ${info?`<div style="font-size:10px;color:#555;line-height:1.45">${info}</div>`:''}
+          ${showAttrs?`<div style="font-size:8px;color:#888;margin-top:4px;line-height:1.35">${cap(m.bd)} · ${cap(m.sk)} · ${m.eth} · ${m.hr} · ${m.ey}</div>`:''}
+          <div style="font-size:8px;color:#b0b0b0;margin-top:4px">${existingPoses.length}/${allPoses.length} poses</div>
         </div>
       </div>
-      ${showPoses&&poseImgs?`<div style="padding:5px 10px 8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;border-top:1px solid #eee">${poseImgs}</div>`:''}
+      ${showPoses&&poseImgs?`<div style="padding:8px 12px 10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;border-top:1px solid #eee;background:#fff">${poseImgs}</div>`:''}
     </div>`;
+  };
+
+  const buildHeader=(item)=>`<div style="grid-column:1/-1;padding:7px 12px;background:${item.spec.color}15;border-right:3px solid ${item.spec.color};border-radius:6px;font-size:12px;font-weight:800;color:${item.spec.color};break-inside:avoid;page-break-inside:avoid">${item.sz} - ${item.spec.desc||''}</div>`;
+
+  const sheet=document.getElementById('castingSheet');
+  let html='';
+  pages.forEach((pageItems,pageIndex)=>{
+    html+=`<div class="casting-page" style="background:#fff;width:1123px;min-height:794px;margin:0 auto 20px;padding:22px 22px 18px;border:1px solid #e5e5e5;box-sizing:border-box;break-after:page;page-break-after:always">`;
+    html+=`<div style="text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #ddd">
+      <h1 style="font-size:24px;font-weight:900;margin:0;color:#111">FY26 Casting Models - Batch 1 (${models.length} Models)</h1>
+      <p style="font-size:12px;color:#666;margin:4px 0 0">Black tank + black biker shorts | White studio | 5 poses per model | A4 landscape</p>
+    </div>`;
+    html+=`<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start">`;
+    pageItems.forEach(item=>{
+      html += item.type==='header' ? buildHeader(item) : buildCard(item.model);
+    });
+    html+=`</div>`;
+    if(showLogo){
+      html+=`<div style="margin-top:16px;padding-top:10px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;color:#aaa">Generated ${new Date().toLocaleDateString()}</span>
+        <span style="font-size:14px;font-weight:800;color:#333">Data<span style="color:#8b5cf6">Plus</span> × Walmart</span>
+      </div>`;
+    }
+    html+=`</div>`;
   });
-  html+=`</div>`;
-  if(showLogo){
-    html+=`<div style="margin-top:20px;padding-top:12px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:10px;color:#aaa">Generated ${new Date().toLocaleDateString()}</span>
-      <span style="font-size:14px;font-weight:800;color:#333">Data<span style="color:#8b5cf6">Plus</span> \u00d7 Walmart</span>
-    </div>`;
-  }
   sheet.innerHTML=html;
 }
 
 async function downloadCasting(format){
-  toast('⏳ מייצר ' + format.toUpperCase() + '...');
-  const el = document.getElementById('castingSheet');
-  if(!el.innerHTML) renderCasting();
-
+  toast('⏳ מייצר '+format.toUpperCase()+'...');
+  const el=document.getElementById('castingSheet');
+  if(!el.innerHTML)renderCasting();
   try{
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r=>setTimeout(r,500));
+    const timestamp=new Date().toISOString().slice(0,10);
+    const sz=document.getElementById('castingSize').value;
+    const filename=`DataPlus_CastingSheet${sz?'_'+sz:''}_${timestamp}`;
 
-    const canvas = await html2canvas(el, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      width: el.scrollWidth,
-      height: el.scrollHeight,
-      windowWidth: el.scrollWidth,
-      windowHeight: el.scrollHeight
-    });
+    const pages=[...el.querySelectorAll('.casting-page')];
+    if(!pages.length) throw new Error('No casting pages found');
 
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const sz = document.getElementById('castingSize').value;
-    const filename = `DataPlus_CastingSheet${sz ? '_' + sz : ''}_${timestamp}`;
-
-    if(format === 'png'){
-      const a = document.createElement('a');
-      a.download = filename + '.png';
-      a.href = canvas.toDataURL('image/png');
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast(`⬇️ ${filename}.png`);
+    if(format==='png'){
+      for(let i=0;i<pages.length;i++){
+        const page=pages[i];
+        const canvas=await html2canvas(page,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:true,logging:false,width:page.scrollWidth,height:page.scrollHeight,windowWidth:page.scrollWidth,windowHeight:page.scrollHeight});
+        const a=document.createElement('a');
+        a.download=pages.length===1?`${filename}.png`:`${filename}_page_${i+1}.png`;
+        a.href=canvas.toDataURL('image/png');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      toast(`⬇️ ${filename}${pages.length===1?'.png':'_page_X.png'}`);
       return;
     }
 
-    if(format === 'pdf'){
+    if(format==='pdf'){
       const { jsPDF } = window.jspdf;
+      const pdf=new jsPDF({orientation:'l',unit:'mm',format:'a4',compress:true});
+      const pageW=297;
+      const pageH=210;
+      const margin=6;
+      const usableW=pageW-(margin*2);
+      const usableH=pageH-(margin*2);
 
-      const PDF_PAGE_FORMAT = 'a4'; // אפשר לשנות ל-'a3'
-      const isA3 = PDF_PAGE_FORMAT === 'a3';
-      const pageW = isA3 ? 297 : 210;
-      const pageH = isA3 ? 420 : 297;
-      const margin = 8;
-      const usableW = pageW - (margin * 2);
-      const usableH = pageH - (margin * 2);
-
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: PDF_PAGE_FORMAT,
-        compress: true
-      });
-
-      // שומר על יחס מקורי של כל התוכן.
-      // במקום לכווץ את כל הדיזיין לעמוד אחד, חותך לעמודים.
-      const mmPerPx = usableW / canvas.width;
-      const pageHeightPx = Math.floor(usableH / mmPerPx);
-
-      let renderedPages = 0;
-
-      for(let y = 0; y < canvas.height; y += pageHeightPx){
-        const sliceHeightPx = Math.min(pageHeightPx, canvas.height - y);
-
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeightPx;
-
-        const pageCtx = pageCanvas.getContext('2d');
-        pageCtx.fillStyle = '#ffffff';
-        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        pageCtx.drawImage(
-          canvas,
-          0, y, canvas.width, sliceHeightPx,
-          0, 0, pageCanvas.width, sliceHeightPx
-        );
-
-        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-        const renderH = sliceHeightPx * mmPerPx;
-
-        if(renderedPages > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', margin, margin, usableW, renderH);
-        renderedPages++;
+      for(let i=0;i<pages.length;i++){
+        const page=pages[i];
+        const canvas=await html2canvas(page,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:true,logging:false,width:page.scrollWidth,height:page.scrollHeight,windowWidth:page.scrollWidth,windowHeight:page.scrollHeight});
+        const imgData=canvas.toDataURL('image/jpeg',0.95);
+        const ratio=Math.min(usableW/canvas.width, usableH/canvas.height);
+        const renderW=canvas.width*ratio;
+        const renderH=canvas.height*ratio;
+        const x=(pageW-renderW)/2;
+        const y=(pageH-renderH)/2;
+        if(i>0)pdf.addPage('a4','l');
+        pdf.addImage(imgData,'JPEG',x,y,renderW,renderH,'','FAST');
       }
 
-      pdf.save(filename + '.pdf');
+      pdf.save(filename+'.pdf');
       toast(`⬇️ ${filename}.pdf`);
     }
-
-  } catch(e){
-    console.error('Export error:', e);
-    toast('שגיאה בייצוא - ' + e.message);
-  }
+  }catch(e){console.error('Export error:',e);toast('שגיאה בייצוא - '+e.message)}
 }
 
 // ═══════════════════════════════════════════════════
