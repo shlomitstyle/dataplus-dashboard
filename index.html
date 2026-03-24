@@ -1650,9 +1650,17 @@ const __trimmedImageCache = new Map();
 function loadImageForTrim(src){
   return new Promise((resolve,reject)=>{
     const img = new Image();
+    let done = false;
+    const finish = (fn, val) => {
+      if(done) return;
+      done = true;
+      clearTimeout(timer);
+      fn(val);
+    };
+    const timer = setTimeout(()=>finish(reject, new Error('Image load timeout')), 8000);
     img.crossOrigin = 'anonymous';
-    img.onload = ()=>resolve(img);
-    img.onerror = reject;
+    img.onload = ()=>finish(resolve, img);
+    img.onerror = (err)=>finish(reject, err || new Error('Image load failed'));
     img.src = src;
   });
 }
@@ -1791,14 +1799,8 @@ async function renderCanvas(){
   const figBaseH=containerH*0.86;
   const tallest=Math.max(...heights);
 
-  const trimmedMap = {};
-  await Promise.all(models.map(async m => {
-    const frontImg = dbImages[m.id+'_Front'] || '';
-    trimmedMap[m.id] = frontImg ? await getTrimmedImage(frontImg, {mode:'canvas'}) : '';
-  }));
-
   modelsEl.innerHTML=models.map(m=>{
-    const frontImg=trimmedMap[m.id] || '';
+    const frontImg=dbImages[m.id+'_Front'] || '';
     const figH=Math.round((m.h/tallest)*figBaseH);
     const figW=Math.max(120, Math.round(figH*0.56));
     const colW=figW+28;
@@ -1809,7 +1811,7 @@ async function renderCanvas(){
     return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex-shrink:0;width:${colW}px;height:${containerH}px">
       <div style="height:${figH}px;width:${figW}px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;border-radius:10px 10px 0 0;background:transparent">
         ${frontImg
-          ? `<img src="${frontImg}" style="height:100%;width:100%;object-fit:contain;object-position:center bottom;display:block"/>`
+          ? `<img data-trim-src="${frontImg}" data-trim-mode="canvas" src="${frontImg}" style="height:100%;width:100%;object-fit:contain;object-position:center bottom;display:block"/>`
           : `<div style="height:100%;width:100%;background:linear-gradient(180deg,var(--sf2),var(--sf3));display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.2;border-radius:10px 10px 0 0">👤</div>`}
       </div>
       <div style="width:${figW}px;height:2px;background:${spec.color}60;border-radius:1px"></div>
@@ -1821,6 +1823,16 @@ async function renderCanvas(){
       </div>
     </div>`;
   }).join('');
+
+  requestAnimationFrame(async ()=>{
+    const imgs=[...modelsEl.querySelectorAll('img[data-trim-src]')];
+    await Promise.all(imgs.map(async imgEl=>{
+      try{
+        const trimmed=await getTrimmedImage(imgEl.dataset.trimSrc,{mode:imgEl.dataset.trimMode||'canvas'});
+        if(trimmed) imgEl.src=trimmed;
+      }catch(e){}
+    }));
+  });
 
   tableEl.innerHTML=`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden">
     <div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1883,26 +1895,9 @@ async function renderCasting(){
     spec:SILHOUETTE_SPEC[size]||{color:'#888',desc:''}
   })).filter(g=>g.list.length);
 
-  const trimMain = {};
-  const trimThumb = {};
-  await Promise.all(models.flatMap(m=>{
-    const { mainImg, existingPoses } = getCastingCardData(m);
-    const jobs = [];
-    if(mainImg){
-      jobs.push(getTrimmedImage(mainImg,{mode:'hero'}).then(v=>{trimMain[m.id]=v;}));
-    }
-    existingPoses.slice(0,5).forEach(p=>{
-      const src = dbImages[m.id+'_'+p];
-      if(src){
-        jobs.push(getTrimmedImage(src,{mode:'thumb'}).then(v=>{trimThumb[m.id+'_'+p]=v;}));
-      }
-    });
-    return jobs;
-  }));
-
   const buildCard=(m)=>{
     const { wt, mainImg, existingPoses } = getCastingCardData(m);
-    const hero=trimMain[m.id] || mainImg;
+    const hero=mainImg;
     let info='';
     if(showHeight)info+=`Height: ${m.h}cm<br>`;
     if(showWeight)info+=`Weight: ~${wt.w}kg (${wt.d})<br>`;
@@ -1910,7 +1905,7 @@ async function renderCasting(){
     if(showInseam&&m.ins)info+=`Inseam: ${m.ins}cm<br>`;
     const attrText=showAttrs?`${m.bd}/${m.sk}/${m.hr}${m.ey?`<br>Eyes: ${m.ey}`:''}`:'';
     const poseThumbs=showPoses?existingPoses.slice(0,5).map(p=>`<div style="width:54px;height:74px;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #ece7e9;display:flex;align-items:center;justify-content:center">
-      <img src="${trimThumb[m.id+'_'+p] || dbImages[m.id+'_'+p]}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff" title="${escHtml(p)}"/>
+      <img data-trim-src="${dbImages[m.id+'_'+p]}" data-trim-mode="thumb" src="${dbImages[m.id+'_'+p]}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff" title="${escHtml(p)}"/>
     </div>`).join(''):'';
 
     return `<article style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid #ddd6d8;box-shadow:0 1px 0 rgba(0,0,0,.02);min-height:332px;display:flex;flex-direction:column;break-inside:avoid-page;page-break-inside:avoid">
@@ -1923,7 +1918,7 @@ async function renderCasting(){
           <div style="font-size:10px;color:#aaa;margin-top:6px">poses ${existingPoses.length}/6</div>
         </div>
         <div style="width:148px;height:188px;border-radius:10px;overflow:hidden;background:#fff;border:1px solid #ece7e9;display:flex;align-items:center;justify-content:center">
-          ${hero?`<img src="${hero}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#b5b5b5;font-size:12px;background:#fafafa">No image</div>`}
+          ${hero?`<img data-trim-src="${hero}" data-trim-mode="hero" src="${hero}" style="width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;background:#fff"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#b5b5b5;font-size:12px;background:#fafafa">No image</div>`}
         </div>
       </div>
       ${showPoses?`<div style="border-top:1px solid #eee7e9;padding:10px 12px"><div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">${poseThumbs || '<div style="font-size:11px;color:#b5b5b5">No pose images</div>'}</div></div>`:''}
@@ -1947,7 +1942,18 @@ async function renderCasting(){
       ${showLogo?`<div style="margin-top:24px;text-align:center;font-size:11px;color:#999;font-weight:700;letter-spacing:.08em">DataPlus Casting Sheet</div>`:''}
     </div>`;
 
-  document.getElementById('castingSheet').innerHTML=html;
+  const cs=document.getElementById('castingSheet');
+  cs.innerHTML=html;
+
+  requestAnimationFrame(async ()=>{
+    const imgs=[...cs.querySelectorAll('img[data-trim-src]')];
+    await Promise.all(imgs.map(async imgEl=>{
+      try{
+        const trimmed=await getTrimmedImage(imgEl.dataset.trimSrc,{mode:imgEl.dataset.trimMode||'hero'});
+        if(trimmed) imgEl.src=trimmed;
+      }catch(e){}
+    }));
+  });
 }
 
 
