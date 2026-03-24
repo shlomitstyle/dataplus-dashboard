@@ -459,7 +459,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
       <div><h3 style="font-size:18px;font-weight:800;margin-bottom:2px">📋 Casting Sheet</h3><p style="color:var(--tx2);font-size:11px">כרטיסיות דוגמניות להורדה — שם, מספר, מידות, תמונות</p></div>
       <div style="display:flex;gap:8px;align-items:center">
         <div class="fg"><label>מידה</label><select id="castingSize" onchange="renderCasting()"><option value="">הכל</option></select></div>
-        <div class="fg"><label>סטטוס</label><select id="castingStatus" onchange="renderCasting()"><option value="">הכל</option><option value="has">עם תמונות</option><option value="done">הושלם (6/6)</option></select></div>
+        <div class="fg"><label>סטטוס</label><select id="castingStatus" onchange="renderCasting()"><option value="">הכל</option><option value="has">עם תמונות</option><option value="front">יש Front</option><option value="closeup">יש Close-Up</option><option value="done">הושלם (6/6)</option></select></div>
         <button class="btn btn-ac" onclick="downloadCasting('png')">⬇️ הורד PNG</button>
         <button class="btn btn-ghost" onclick="downloadCasting('pdf')">📄 הורד PDF</button>
       </div>
@@ -1647,73 +1647,88 @@ function renderCanvas(){
   if(bd)models=models.filter(m=>m.bd===bd);
   models.sort((a,b)=>a.h-b.h);
 
-  // Height scale
-  const minH=Math.max(145,Math.min(...models.map(m=>m.h))-5);
-  const maxH=Math.min(200,Math.max(...models.map(m=>m.h))+5);
+  if(!models.length){document.getElementById('canvasModels').innerHTML='<div style="color:var(--tx3);padding:40px;text-align:center">אין מודלים</div>';document.getElementById('canvasScale').innerHTML='';document.getElementById('canvasTable').innerHTML='';return}
+
+  // Height scale — calculate range to show real height differences
+  const heights=models.map(m=>m.h);
+  const minH=Math.min(...heights)-3;
+  const maxH=Math.max(...heights)+3;
+  const range=maxH-minH||10;
+  const containerH=500; // px total height for the display area
+
+  // Scale sidebar
   const scaleEl=document.getElementById('canvasScale');
   let scaleHtml='';
-  for(let h=maxH;h>=minH;h-=5){
-    const pct=((maxH-h)/(maxH-minH))*100;
-    scaleHtml+=`<div style="position:absolute;top:${pct}%;left:0;right:0;border-top:1px solid var(--bd)"><span style="position:absolute;left:4px;top:-8px;font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">${h}</span></div>`;
+  for(let h=Math.ceil(maxH);h>=Math.floor(minH);h-=2){
+    const pct=((maxH-h)/range)*100;
+    const isMajor=h%5===0;
+    scaleHtml+=`<div style="position:absolute;top:${pct}%;left:0;right:0;border-top:1px ${isMajor?'solid':'dotted'} ${isMajor?'var(--bd)':'rgba(255,255,255,.03)'}"><span style="position:absolute;left:4px;top:-7px;font-size:${isMajor?'9':'7'}px;color:${isMajor?'var(--tx2)':'var(--tx3)'};font-family:'JetBrains Mono',monospace;font-weight:${isMajor?'700':'400'}">${h}</span></div>`;
   }
-  scaleEl.style.background=`linear-gradient(180deg,${spec.color}15,${spec.color}05)`;
+  // Spec reference line
+  const specPct=((maxH-spec.height)/range)*100;
+  scaleHtml+=`<div style="position:absolute;top:${specPct}%;left:0;right:0;border-top:2px dashed ${spec.color};z-index:2"><span style="position:absolute;right:2px;top:-14px;font-size:7px;color:${spec.color};font-weight:700;font-family:'JetBrains Mono',monospace">SPEC ${spec.height}</span></div>`;
+  scaleEl.style.background=`linear-gradient(180deg,${spec.color}12,transparent)`;
+  scaleEl.style.height=containerH+'px';
   scaleEl.innerHTML=scaleHtml;
 
-  // Model cards positioned by height
+  // Model figures — positioned by REAL height with proportional sizing
   const container=document.getElementById('canvasModels');
+  container.style.height=containerH+'px';
+  container.style.alignItems='flex-end';
+  container.style.position='relative';
+
+  // Each model gets a column. Height of the figure image is proportional to actual height
+  const figBaseH=containerH*0.85; // max figure height in px (for tallest model)
+  const tallest=Math.max(...heights);
+
   container.innerHTML=models.map(m=>{
-    const wt=WT[m.id]||{w:'?',d:'?'};
-    const pct=((maxH-m.h)/(maxH-minH))*100;
-    const frontImg=dbImages[m.id+'_Front']||dbImages[m.id+'_Close-Up']||'';
-    const dc=getDoneCount(m.id);
-    return `<div style="min-width:130px;max-width:150px;display:flex;flex-direction:column;align-items:center;margin-top:${pct}%" onclick="openModelPage(${m.id})">
-      <div style="background:var(--sf2);border:2px solid ${spec.color};border-radius:10px;overflow:hidden;width:130px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='${spec.color}'">
-        <div style="aspect-ratio:3/4;background:var(--sf3);display:flex;align-items:center;justify-content:center;overflow:hidden">
-          ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:28px;opacity:.15">👤</div>`}
-        </div>
-        <div style="padding:8px;text-align:center">
-          <div style="font-size:12px;font-weight:700;color:${m.cl}">${m.nm}</div>
-          <div style="font-size:9px;color:var(--tx3);font-family:'JetBrains Mono',monospace">#${m.id} · ${m.h}cm · ${wt.w}kg</div>
-          <div style="font-size:8px;color:var(--tx2);margin-top:2px">B${m.bu}/W${m.wa}/H${m.hp}</div>
-          <div style="font-size:8px;color:var(--tx3);margin-top:2px">${dc}/6 poses</div>
-        </div>
+    const frontImg=dbImages[m.id+'_Front']||'';
+    // Figure height proportional to actual height
+    const figH=Math.round((m.h/tallest)*figBaseH);
+    // Bottom offset to align feet at ground level
+    const bottomOffset=0;
+    const heightDiff=m.h-spec.height;
+    const diffColor=heightDiff>0?'var(--gn)':heightDiff<0?'var(--rs)':'var(--tx2)';
+    const diffSign=heightDiff>0?'+':'';
+
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:110px">
+      <!-- Figure with background removed effect -->
+      <div style="height:${figH}px;width:90px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;border-radius:8px 8px 0 0">
+        ${frontImg?`<img src="${frontImg}" style="height:100%;width:100%;object-fit:cover;object-position:top center;mix-blend-mode:normal;filter:contrast(1.02)"/>`
+        :`<div style="height:100%;width:100%;background:linear-gradient(180deg,var(--sf2),var(--sf3));display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.2">👤</div>`}
       </div>
-      <div style="font-size:10px;font-weight:700;color:${spec.color};margin-top:4px;font-family:'JetBrains Mono',monospace">${m.h}cm</div>
+      <!-- Ground line -->
+      <div style="width:90px;height:2px;background:${spec.color}60;border-radius:1px"></div>
+      <!-- Info: name, ID, size, height only -->
+      <div style="text-align:center;padding:6px 0;width:100%">
+        <div style="font-size:11px;font-weight:800;color:${m.cl}">${m.nm}</div>
+        <div style="font-size:8px;color:var(--tx3);font-family:'JetBrains Mono',monospace">#${m.id} · ${m.sz}</div>
+        <div style="font-size:13px;font-weight:800;color:var(--tx);margin-top:2px;font-family:'JetBrains Mono',monospace">${m.h}cm</div>
+        <div style="font-size:8px;color:${diffColor};font-weight:700;font-family:'JetBrains Mono',monospace">${diffSign}${heightDiff}cm vs spec</div>
+      </div>
     </div>`;
   }).join('');
 
-  // Profiles table
-  const whr=m=>m.hp?(m.wa/m.hp).toFixed(2):'—';
+  // Simplified table - just name, ID, size, height
   document.getElementById('canvasTable').innerHTML=`
-    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;font-weight:700;color:${spec.color}">${sz} — ${models.length} Models</span>
-        <span style="font-size:10px;color:var(--tx3)">${spec.desc}</span>
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-top:16px">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:700;color:${spec.color}">${sz} — ${models.length} Models · Spec height: ${spec.height}cm</span>
       </div>
-      <div class="tw"><table style="width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:left">
+      <div class="tw"><table style="width:100%;border-collapse:collapse;font-size:11px;direction:ltr;text-align:left">
         <thead><tr style="background:var(--sf2)">
-          <th style="padding:8px;font-weight:600;color:var(--tx2);font-size:8px;text-transform:uppercase">Name</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">ID</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Body</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Height</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Weight</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Bust</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Waist</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Hips</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">W/H</th>
-          <th style="padding:8px;color:var(--tx2);font-size:8px">Trait</th>
+          <th style="padding:8px 12px;font-weight:600;color:var(--tx2);font-size:9px">Name</th>
+          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">ID</th>
+          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Size</th>
+          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Height</th>
+          <th style="padding:8px 12px;color:var(--tx2);font-size:9px">Δ Spec</th>
         </tr></thead>
-        <tbody>${models.map(m=>{const w=WT[m.id]||{w:'?'};return `<tr style="border-top:1px solid var(--bd);cursor:pointer" onclick="openModelPage(${m.id})" onmouseover="this.style.background='var(--sf2)'" onmouseout="this.style.background=''">
-          <td style="padding:6px 8px;font-weight:700;color:${m.cl}">${m.nm}</td>
-          <td style="padding:6px 8px;color:var(--tx3)">#${m.id}</td>
-          <td style="padding:6px 8px;color:var(--tx2)">${m.bd}</td>
-          <td style="padding:6px 8px;font-weight:600">${m.h}cm</td>
-          <td style="padding:6px 8px">${w.w}kg</td>
-          <td style="padding:6px 8px">${m.bu}</td>
-          <td style="padding:6px 8px">${m.wa}</td>
-          <td style="padding:6px 8px">${m.hp}</td>
-          <td style="padding:6px 8px">${m.hp?(m.wa/m.hp).toFixed(2):'—'}</td>
-          <td style="padding:6px 8px;font-size:9px;color:var(--tx3)">${m.tr.split(';')[0].split('—')[0].trim()}</td>
+        <tbody>${models.map(m=>{const d=m.h-spec.height;const dc=d>0?'var(--gn)':d<0?'var(--rs)':'var(--tx2)';return `<tr style="border-top:1px solid var(--bd)">
+          <td style="padding:6px 12px;font-weight:700;color:${m.cl}">${m.nm}</td>
+          <td style="padding:6px 12px;color:var(--tx3);font-family:'JetBrains Mono',monospace">#${m.id}</td>
+          <td style="padding:6px 12px"><span style="background:${spec.color}20;color:${spec.color};padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700">${m.sz}</span></td>
+          <td style="padding:6px 12px;font-weight:700;font-family:'JetBrains Mono',monospace">${m.h}cm</td>
+          <td style="padding:6px 12px;font-weight:700;color:${dc};font-family:'JetBrains Mono',monospace">${d>0?'+':''}${d}cm</td>
         </tr>`}).join('')}</tbody>
       </table></div>
     </div>`;
@@ -1729,28 +1744,35 @@ function renderCasting(){
   if(sz)models=models.filter(m=>m.sz===sz);
   if(status==='has')models=models.filter(m=>allPoses.some(p=>dbImages[m.id+'_'+p]));
   if(status==='done')models=models.filter(m=>getDoneCount(m.id)===6);
+  if(status==='front')models=models.filter(m=>dbImages[m.id+'_Front']);
+  if(status==='closeup')models=models.filter(m=>dbImages[m.id+'_Close-Up']);
   models.sort((a,b)=>{const ai=SO.indexOf(a.sz),bi=SO.indexOf(b.sz);return ai!==bi?ai-bi:a.h-b.h});
 
   const sheet=document.getElementById('castingSheet');
   let html=`<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #ddd">
-    <h1 style="font-size:28px;font-weight:900;margin:0;color:#111">FY26 Casting Models${sz?' — Size '+sz:''}</h1>
-    <p style="font-size:13px;color:#666;margin:4px 0 0">Black tank + black biker shorts | White studio | ${models.length} Models · ${allPoses.length} poses per model</p>
+    <h1 style="font-size:28px;font-weight:900;margin:0;color:#111">FY26 Casting Models - Batch 1 (${models.length} Models)</h1>
+    <p style="font-size:13px;color:#666;margin:4px 0 0">Black tank + black biker shorts | White studio | 5 poses per model</p>
   </div>`;
 
   html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px">`;
   models.forEach(m=>{
     const wt=WT[m.id]||{w:'?',d:'?'};
-    const dc=getDoneCount(m.id);
     const frontImg=dbImages[m.id+'_Front']||'';
-    const poseImgs=allPoses.filter(p=>p!=='Close-Up').map(p=>{
+    const closeupImg=dbImages[m.id+'_Close-Up']||'';
+
+    // Collect ONLY existing pose images
+    const existingPoses=allPoses.filter(p=>dbImages[m.id+'_'+p]);
+    const poseImgs=existingPoses.map(p=>{
       const url=dbImages[m.id+'_'+p];
-      return url?`<img src="${url}" style="width:48px;height:64px;object-fit:cover;border-radius:3px;border:1px solid #ddd"/>`:`<div style="width:48px;height:64px;background:#f0f0f0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#aaa;border:1px solid #ddd">${p}</div>`;
+      return `<img src="${url}" style="width:48px;height:64px;object-fit:cover;border-radius:3px;border:1px solid #ddd" title="${p}"/>`;
     }).join('');
 
     html+=`<div style="background:#fafafa;border:1px solid #ddd;border-radius:8px;overflow:hidden;page-break-inside:avoid">
       <div style="display:flex;gap:10px;padding:10px">
         <div style="width:90px;height:120px;background:#eee;border-radius:6px;overflow:hidden;flex-shrink:0">
-          ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;color:#ccc">👤</div>`}
+          ${frontImg?`<img src="${frontImg}" style="width:100%;height:100%;object-fit:cover"/>`
+           :closeupImg?`<img src="${closeupImg}" style="width:100%;height:100%;object-fit:cover"/>`
+           :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;color:#ccc">👤</div>`}
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:10px;color:#999;font-family:monospace">#${m.id} · ${m.sz}</div>
@@ -1762,14 +1784,14 @@ function renderCasting(){
             ${m.ins?'<br>Inseam: '+m.ins+'cm':''}
           </div>
           <div style="font-size:9px;color:#888;margin-top:3px">${cap(m.bd)} · ${cap(m.sk)} · ${m.eth} · ${m.hr} · ${m.ey}</div>
+          <div style="font-size:8px;color:#aaa;margin-top:2px">${existingPoses.length}/${allPoses.length} poses</div>
         </div>
       </div>
-      <div style="padding:6px 10px 10px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;border-top:1px solid #eee">${poseImgs}</div>
+      ${poseImgs?`<div style="padding:6px 10px 10px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;border-top:1px solid #eee">${poseImgs}</div>`:''}
     </div>`;
   });
   html+=`</div>`;
 
-  // Footer
   html+=`<div style="text-align:right;margin-top:20px;padding-top:12px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center">
     <span style="font-size:10px;color:#aaa">Generated ${new Date().toLocaleDateString()}</span>
     <span style="font-size:14px;font-weight:800;color:#333">Data<span style="color:#8b5cf6">Plus</span> × Walmart</span>
