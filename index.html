@@ -1868,40 +1868,53 @@ async function downloadCasting(format){
 
     if(format === 'pdf'){
       const { jsPDF } = window.jspdf;
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
       const PDF_PAGE_FORMAT = 'a4'; // אפשר לשנות ל-'a3'
       const isA3 = PDF_PAGE_FORMAT === 'a3';
       const pageW = isA3 ? 297 : 210;
       const pageH = isA3 ? 420 : 297;
+      const margin = 8;
+      const usableW = pageW - (margin * 2);
+      const usableH = pageH - (margin * 2);
 
       const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
-        format: PDF_PAGE_FORMAT
+        format: PDF_PAGE_FORMAT,
+        compress: true
       });
 
-      const margin = 0;
-      const usableW = pageW - (margin * 2);
-      const usableH = pageH - (margin * 2);
+      // שומר על יחס מקורי של כל התוכן.
+      // במקום לכווץ את כל הדיזיין לעמוד אחד, חותך לעמודים.
+      const mmPerPx = usableW / canvas.width;
+      const pageHeightPx = Math.floor(usableH / mmPerPx);
 
-      const imgRatio = canvas.width / canvas.height;
-      const pageRatio = usableW / usableH;
+      let renderedPages = 0;
 
-      let renderW, renderH;
+      for(let y = 0; y < canvas.height; y += pageHeightPx){
+        const sliceHeightPx = Math.min(pageHeightPx, canvas.height - y);
 
-      if(imgRatio > pageRatio){
-        renderW = usableW;
-        renderH = usableW / imgRatio;
-      } else {
-        renderH = usableH;
-        renderW = usableH * imgRatio;
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+
+        const pageCtx = pageCanvas.getContext('2d');
+        pageCtx.fillStyle = '#ffffff';
+        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageCtx.drawImage(
+          canvas,
+          0, y, canvas.width, sliceHeightPx,
+          0, 0, pageCanvas.width, sliceHeightPx
+        );
+
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+        const renderH = sliceHeightPx * mmPerPx;
+
+        if(renderedPages > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', margin, margin, usableW, renderH);
+        renderedPages++;
       }
 
-      const offsetX = (pageW - renderW) / 2;
-      const offsetY = (pageH - renderH) / 2;
-
-      pdf.addImage(imgData, 'JPEG', offsetX, offsetY, renderW, renderH);
       pdf.save(filename + '.pdf');
       toast(`⬇️ ${filename}.pdf`);
     }
