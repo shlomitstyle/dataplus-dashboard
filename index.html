@@ -1710,14 +1710,14 @@ function renderCanvas(){
     const diffColor=heightDiff>0?'var(--gn)':heightDiff<0?'var(--rs)':'var(--tx2)';
     const diffSign=heightDiff>0?'+':'';
 
-    return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:110px">
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:140px">
       <!-- Figure with background removed effect -->
-      <div style="height:${figH}px;width:90px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;border-radius:8px 8px 0 0">
-        ${frontImg?`<img src="${frontImg}" style="height:100%;width:100%;object-fit:cover;object-position:top center;mix-blend-mode:normal;filter:contrast(1.02)"/>`
+      <div style="height:${figH}px;width:120px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;border-radius:8px 8px 0 0;padding:0 6px;box-sizing:border-box">
+        ${frontImg?`<img src="${frontImg}" style="height:100%;width:auto;max-width:100%;object-fit:contain;object-position:center bottom;display:block;mix-blend-mode:normal;filter:contrast(1.02)"/>`
         :`<div style="height:100%;width:100%;background:linear-gradient(180deg,var(--sf2),var(--sf3));display:flex;align-items:center;justify-content:center;font-size:24px;opacity:.2">👤</div>`}
       </div>
       <!-- Ground line -->
-      <div style="width:90px;height:2px;background:${spec.color}60;border-radius:1px"></div>
+      <div style="width:120px;height:2px;background:${spec.color}60;border-radius:1px"></div>
       <!-- Info: name, ID, size, height only -->
       <div style="text-align:center;padding:6px 0;width:100%">
         <div style="font-size:11px;font-weight:800;color:${m.cl}">${m.nm}</div>
@@ -1799,7 +1799,7 @@ function renderCasting(){
     const closeupImg=dbImages[m.id+'_Close-Up']||'';
     const mainImg=frontImg||closeupImg;
     const existingPoses=allPoses.filter(p=>dbImages[m.id+'_'+p]);
-    const poseImgs=existingPoses.map(p=>`<img src="${dbImages[m.id+'_'+p]}" style="width:44px;height:58px;object-fit:cover;border-radius:3px;border:1px solid #ddd" title="${p}"/>`).join('');
+    const poseImgs=existingPoses.map(p=>`<img src="${dbImages[m.id+'_'+p]}" style="width:44px;height:58px;object-fit:contain;object-position:center top;border-radius:3px;border:1px solid #ddd;background:#fff" title="${p}"/>`).join('');
     let info='';
     if(showHeight)info+=`Height: ${m.h}cm<br>`;
     if(showWeight)info+=`Weight: ~${wt.w}kg (${wt.d})<br>`;
@@ -1808,7 +1808,7 @@ function renderCasting(){
     html+=`<div style="background:#fafafa;border:1px solid #ddd;border-radius:8px;overflow:hidden;page-break-inside:avoid">
       <div style="display:flex;gap:10px;padding:10px">
         <div style="width:85px;height:115px;background:#eee;border-radius:6px;overflow:hidden;flex-shrink:0">
-          ${mainImg?`<img src="${mainImg}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#ccc">👤</div>`}
+          ${mainImg?`<img src="${mainImg}" style="width:100%;height:100%;object-fit:contain;object-position:center top;background:#fff"/>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#ccc">👤</div>`}
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:9px;color:#999;font-family:monospace">#${m.id} \u00b7 ${m.sz}</div>
