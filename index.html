@@ -356,7 +356,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
     </div>
     <div id="aiMain" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:7px">
-        <div><h3 style="font-size:17px;font-weight:800">🎨 AI Fashion Model Studio</h3><p style="color:var(--tx2);font-size:11px">Gemini 2.5 Flash · prompt → image</p></div>
+        <div><h3 style="font-size:17px;font-weight:800">🎨 AI Fashion Model Studio</h3>        <p style="color:var(--tx2);font-size:11px">Gemini 3.1 Flash Image · prompt → image</p></div>
         <div style="display:flex;gap:6px"><button class="btn btn-g" onclick="aiReset()">🗑️ נקה</button><button class="btn btn-p" id="aiRunBtn" onclick="aiRun()">▶️ Generate</button></div>
       </div>
       <div style="border:1px solid var(--bd);border-radius:12px;background:var(--bg);overflow:auto;height:580px;position:relative">
@@ -1220,8 +1220,9 @@ async function dlCasting(fmt){
 // AI STUDIO
 // ══════════════════════════════════════════════
 const GEMS=[
-  'gemini-2.0-flash-preview-image-generation',
-  'gemini-2.5-flash-preview-05-20'
+  'gemini-3.1-flash-image-preview',
+  'gemini-2.5-flash-image-preview',
+  'gemini-2.0-flash-preview-image-generation'
 ];
 let aiKey=null, aiHist=[];
 function aiConnect(){
