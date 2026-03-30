@@ -275,11 +275,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <div class="rng"><label>שקיפות</label><input type="range" id="qcOp" min="0" max="100" value="50" style="width:90px" oninput="qcDraw();document.getElementById('qcOpV').textContent=this.value+'%'"><span id="qcOpV">50%</span></div>
           <div class="rng"><label>סילואט %</label>
-            <select id="qcSc" onchange="qcDraw();document.getElementById('qcScV').textContent=this.value+'%'">
-              <option>25</option><option>50</option><option>75</option><option selected>100</option>
-              <option>125</option><option>150</option><option>200</option><option>250</option>
-              <option>300</option><option>400</option><option>500</option>
-            </select>
+            <input type="range" id="qcSc" min="1" max="500" value="100" step="1" style="width:110px"
+              oninput="qcDraw();document.getElementById('qcScV').textContent=this.value+'%'">
             <span id="qcScV">100%</span>
           </div>
           <div class="rng"><label>X</label><input type="range" id="qcX" min="-200" max="200" value="0" style="width:70px" oninput="qcDraw()"></div>
