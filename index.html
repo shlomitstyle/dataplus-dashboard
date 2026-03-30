@@ -1139,8 +1139,60 @@ function renderCanvas(){
 // ══════════════════════════════════════════════
 // CASTING
 // ══════════════════════════════════════════════
-const _tc=new Map();
-function ltrim(src,mode){if(!src)return Promise.resolve('');const k=`${mode}::${src}`;if(_tc.has(k))return Promise.resolve(_tc.get(k));return new Promise(res=>{const img=new Image();let done=false;const fin=(v)=>{if(done)return;done=true;clearTimeout(t);_tc.set(k,v);res(v);};const t=setTimeout(()=>fin(src),7000);img.crossOrigin='anonymous';img.onload=()=>{try{const cv=document.createElement('canvas');const ct=cv.getContext('2d',{willReadFrequently:true});cv.width=img.naturalWidth;cv.height=img.naturalHeight;ct.drawImage(img,0,0);const{data,width,height}=ct.getImageData(0,0,cv.width,cv.height);const thr=245;let top=height,bottom=-1,left=width,right=-1;for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;const w=data[i+3]<8||(data[i]>thr&&data[i+1]>thr&&data[i+2]>thr);if(!w){if(y<top)top=y;if(y>bottom)bottom=y;if(x<left)left=x;if(x>right)right=x;}}if(bottom===-1){fin(src);return;}const p=12;const cW=Math.max(1,right-left+p*2);const cH2=Math.max(1,bottom-top+p*2);const out=document.createElement('canvas');out.width=cW;out.height=cH2;out.getContext('2d').drawImage(cv,Math.max(0,left-p),Math.max(0,top-p),cW,cH2,0,0,cW,cH2);fin(out.toDataURL('image/png'));}catch(e){fin(src);}};img.onerror=()=>fin(src);img.src=src;});}
+const _tc = new Map();
+
+function ltrim(src, mode) {
+  if (!src) return Promise.resolve('');
+  var k = (mode||'') + '::' + src;
+  if (_tc.has(k)) return Promise.resolve(_tc.get(k));
+  return new Promise(function(res) {
+    var img = new Image();
+    var done = false;
+    var t = setTimeout(function() { finish(src); }, 7000);
+    function finish(v) {
+      if (done) return;
+      done = true;
+      clearTimeout(t);
+      _tc.set(k, v);
+      res(v);
+    }
+    img.crossOrigin = 'anonymous';
+    img.onerror = function() { finish(src); };
+    img.onload = function() {
+      try {
+        var cv = document.createElement('canvas');
+        var ct = cv.getContext('2d', { willReadFrequently: true });
+        cv.width = img.naturalWidth;
+        cv.height = img.naturalHeight;
+        ct.drawImage(img, 0, 0);
+        var px = ct.getImageData(0, 0, cv.width, cv.height);
+        var data = px.data, W = px.width, H = px.height, thr = 245;
+        var top = H, bottom = -1, left = W, right = -1;
+        for (var y = 0; y < H; y++) {
+          for (var x = 0; x < W; x++) {
+            var i = (y * W + x) * 4;
+            var isWhite = data[i+3] < 8 || (data[i] > thr && data[i+1] > thr && data[i+2] > thr);
+            if (!isWhite) {
+              if (y < top) top = y;
+              if (y > bottom) bottom = y;
+              if (x < left) left = x;
+              if (x > right) right = x;
+            }
+          }
+        }
+        if (bottom === -1) { finish(src); return; }
+        var pad = 12;
+        var cW = Math.max(1, right - left + pad * 2);
+        var cH = Math.max(1, bottom - top + pad * 2);
+        var out = document.createElement('canvas');
+        out.width = cW; out.height = cH;
+        out.getContext('2d').drawImage(cv, Math.max(0, left - pad), Math.max(0, top - pad), cW, cH, 0, 0, cW, cH);
+        finish(out.toDataURL('image/png'));
+      } catch(e) { finish(src); }
+    };
+    img.src = src;
+  });
+}
 
 async function renderCasting(){
   const sz=mw('csSz').value,st=mw('csSt').value,bd=mw('csBd').value,eth=mw('csEth').value;
