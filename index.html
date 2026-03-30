@@ -615,18 +615,39 @@ function subscribeRealtime(){
 function updateProgress(){const total=MD.length*6;let done=0;const byWorker={};MD.forEach(m=>{const s=getStatus(m.id);const d=allPoses.filter(p=>s[poseDB[p]]).length;done+=d;const w=s.assigned_to;if(w){if(!byWorker[w])byWorker[w]={done:0,total:0};byWorker[w].total+=6;byWorker[w].done+=d}});const pct=total?Math.round(done/total*100):0;let wHtml=Object.entries(byWorker).map(([w,v])=>`<span class="pb-stat" style="color:${w==='שלומית'?'var(--gn)':'var(--ac)'}">${w}: ${v.done}/${v.total}</span>`).join('');document.getElementById('progressBar').innerHTML=`<div class="pb-label">התקדמות</div><div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div><div class="pb-stat">${done}/${total} (${pct}%)</div>${wHtml}`}
 
 // ── TABS ──
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('p-'+t.dataset.tab).classList.add('active')}));
+// ── TABS ──
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('p-'+t.dataset.tab).classList.add('active');
+  if(t.dataset.tab==='overview') setTimeout(()=>initStats(),60);
+}));
 
 // ── PROJECT SWITCHER ──
 let chartInstances=[];
 function switchProject(idx){
   if(idx===currentProject)return;
   currentProject=idx;
-  chartInstances.forEach(c=>{try{c.destroy()}catch(e){}});chartInstances=[];
+  chartInstances.forEach(c=>{try{c.destroy()}catch(e){}});
+  chartInstances=[];
   if(idx===0){MD=MD_WOMEN;SO=SO_WOMEN;WT=WT_WOMEN;SILHOUETTE_SPEC=SILHOUETTE_SPEC_W;document.getElementById('hdrSub').textContent='Women Batch 1–2 · 34 Models · Supabase'}
   else{MD=MD_BATCH_B;SO=SO_MEN;WT=WT_MEN;SILHOUETTE_SPEC=SILHOUETTE_SPEC_M;document.getElementById('hdrSub').textContent='Men B1 + Women B3/4 · 35 Models · Supabase'}
   document.querySelectorAll('.proj-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-  initProjectUI();updateProgress();fGal();renderLiveGallery();renderDataTable();genPrompts();initQC();renderCanvas();renderCasting();initStats();
+  // go back to overview tab
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.tab[data-tab="overview"]').classList.add('active');
+  document.getElementById('p-overview').classList.add('active');
+  initProjectUI();
+  updateProgress();
+  fGal();
+  renderDataTable();
+  genPrompts();
+  initQC();
+  renderCanvas();
+  renderCasting();
+  setTimeout(()=>initStats(),60);
 }
 
 function initProjectUI(){
@@ -996,20 +1017,28 @@ async function captureScreen(){toast('📸 מכין...');try{const panel=documen
 
 // ── BOOT ──
 async function boot(){
-  if(sb){try{const{error}=await sb.from('model_status').select('id',{count:'exact',head:true});if(error){document.getElementById('connBanner').classList.add('show');isConnected=false}}catch(e){}}
+  if(sb){
+    try{
+      const{error}=await sb.from('model_status').select('id',{count:'exact',head:true});
+      if(error){document.getElementById('connBanner').classList.add('show');isConnected=false}
+    }catch(e){document.getElementById('connBanner').classList.add('show');isConnected=false}
+  }
   await loadAllData();
   await loadDeliveryData();
   await loadAttrOverrides();
-  document.getElementById('syncStatus').innerHTML=isConnected?'<span class="live-dot"></span> מחובר ב-Real-Time':'⚡ מצב מקומי';
-  initProjectUI();
-  updateProgress();
-  fGal();
-  renderDataTable();
-  genPrompts();
-  initQC();
-  renderCanvas();
-  renderCasting();
-  initStats(); // renders overview including charts + live gallery
+  document.getElementById('syncStatus').innerHTML=isConnected
+    ?'<span class="live-dot"></span> מחובר ב-Real-Time'
+    :'⚡ מצב מקומי';
+  initProjectUI();   // sets up selects, filters
+  updateProgress();  // progress bar
+  fGal();            // gallery grid
+  renderDataTable(); // table
+  genPrompts();      // prompts tab
+  initQC();          // qc selects + silhouettes
+  renderCanvas();    // canvas tab (needs size select populated)
+  renderCasting();   // casting sheet
+  // initStats last — overview panel is visible, charts need visible DOM
+  setTimeout(()=>initStats(), 80);
 }
 boot();
 </script>
