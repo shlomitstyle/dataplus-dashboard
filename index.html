@@ -4539,7 +4539,7 @@ function aiLoadRef(e){
     const mimeType=file.type||'image/png';
     aiRefImg={data:base64, mimeType};
     mw('aiOutPortrait').innerHTML=`<img src="${dataUrl}" style="width:100%;max-height:250px;object-fit:contain;border-radius:7px;border:1px solid var(--bd)"/>`;
-    mw('aiRefStatus').innerHTML='<span style="color:var(--gn)">✅ Reference image loaded — will be sent with body prompts</span>';
+    mw('aiRefStatus').innerHTML='<span style="color:var(--gn)">✅ Reference image loaded'+(aiKitImg?' + Kit ref':'')+'</span>';
     toast('📸 Reference image loaded!');
     aiAssemble();
   };
@@ -4623,12 +4623,13 @@ async function aiRunStep(step){
   btnEl.disabled=true;btnEl.textContent='⏳';
   outEl.innerHTML='<div class="ai-gen"><div class="spin"></div>Gemini מייצר...</div>';
   try{
-    // For body poses, include both portrait ref AND kit ref if available
+    // Build reference images for each step
     let refImages = [];
+    if(isPortrait && aiKitImg) refImages.push({img:aiKitImg, label:'team uniform/kit reference - the player must wear this exact uniform'});
     if(isBody && aiRefImg) refImages.push({img:aiRefImg, label:'portrait reference'});
     if(isBody && aiKitImg) refImages.push({img:aiKitImg, label:'uniform/kit reference'});
     
-    const{img,model}=await aiTry(prompt,0, refImages.length>0 ? refImages : (refImage ? [{img:refImage, label:'reference'}] : null));
+    const{img,model}=await aiTry(prompt,0, refImages.length>0 ? refImages : null);
     if(img){
       const src=`data:${img.mimeType};base64,${img.data}`;
       const ts=new Date();
