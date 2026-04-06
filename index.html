@@ -208,6 +208,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
       <option value="שקד">שקד</option>
     </select>
     <div class="sync" id="syncLbl"><span class="dot"></span> מחובר</div>
+    <button onclick="openAdminPanel()" style="background:none;border:1px solid var(--bd);border-radius:6px;color:var(--tx2);font-size:14px;padding:3px 8px;cursor:pointer;margin-right:6px" title="Admin Settings">⚙️</button>
   </div>
 
   <div class="prog" id="prog"></div>
@@ -1512,8 +1513,8 @@ function doSwitchProj(idx){
   else if(idx===2){MD=WEFL_MD;SO=WEFL_SO;WT_BASE=WEFL_WT;SPEC={};mw('hdrSub').textContent='Private · 20 Teams · 220 Players';}
   document.querySelectorAll('.psw-btn').forEach(b=>b.classList.remove('on'));
   const pbtn=mw('pb'+idx);if(pbtn)pbtn.classList.add('on');
-  // Show/hide Team Kits tab for WEFL only
-  const kitsBtn=mw('tabBtnKits');if(kitsBtn)kitsBtn.style.display=idx===2?'':'none';
+  // Show/hide tabs based on admin config
+  applyAdminCfg();
   initUI();
   if(idx===2)renderTeamKits();
   showTab(idx===2?'casting':'overview');
@@ -1812,6 +1813,222 @@ function openModel(mid){
 // ══════════════════════════════════════════════
 function closeModal(){mw('modal').innerHTML='';}
 
+// ══════════════════════════════════════════════
+// ADMIN PANEL
+// ══════════════════════════════════════════════
+const ADMIN_KEY='dp_admin_cfg';
+function loadAdminCfg(){try{return JSON.parse(localStorage.getItem(ADMIN_KEY))||{};}catch(e){return {};}}
+function saveAdminCfg(cfg){try{localStorage.setItem(ADMIN_KEY,JSON.stringify(cfg));}catch(e){}}
+
+const ALL_TABS=[
+  {id:'overview',label:'סקירה',icon:'📊'},
+  {id:'gallery',label:'גלריה & ניהול',icon:'🖼️'},
+  {id:'prompts',label:'פרומפטים',icon:'📝'},
+  {id:'qc',label:'QC מידות',icon:'📏'},
+  {id:'canvas',label:'Canvas',icon:'📊'},
+  {id:'casting',label:'Casting',icon:'📋'},
+  {id:'teamkits',label:'Team Kits',icon:'👕'},
+  {id:'ai',label:'AI Studio',icon:'🎨'},
+  {id:'table',label:'טבלה',icon:'📊'}
+];
+
+const ALL_COLS=[
+  {k:'nm',l:'Name'},{k:'id',l:'ID'},{k:'g',l:'Gender'},{k:'_a',l:'Assigned'},{k:'_s',l:'Status'},
+  {k:'_d',l:'Progress'},{k:'_dlv',l:'Delivery'},{k:'sz',l:'Size'},{k:'h',l:'Height'},
+  {k:'bu',l:'Bust/Chest'},{k:'wa',l:'Waist'},{k:'hp',l:'Hips'},{k:'_wt',l:'Weight'},
+  {k:'_e_sk',l:'Skin'},{k:'_e_hr',l:'Hair'},{k:'_e_eth',l:'Ethnicity'},{k:'_e_ey',l:'Eyes'},
+  {k:'_e_bd',l:'Body'},{k:'_e_st',l:'Stature'},{k:'_e_ag',l:'Age'},{k:'tr',l:'Trait'}
+];
+
+const PROJ_LABELS=['Batch 3 - 34 Models','Batch 3 - 35 Models','WEFL Private'];
+
+function openAdminPanel(){
+  const cfg=loadAdminCfg();
+  
+  // Tab visibility per project
+  const projTabs={};
+  for(let pi=0;pi<3;pi++){
+    projTabs[pi]=cfg['tabs_'+pi]||ALL_TABS.map(t=>t.id);
+  }
+  
+  // Table column visibility
+  const visCols=cfg.visCols||ALL_COLS.map(c=>c.k);
+  
+  // Project labels
+  const labels=cfg.labels||[...PROJ_LABELS];
+
+  let html=`<div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;max-height:85vh;overflow-y:auto">
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:14px">⚙️ Admin Settings</h3>
+      
+      <div style="margin-bottom:18px">
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">📝 Project Names</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${labels.map((l,i)=>`<div>
+            <label style="font-size:9px;color:var(--tx3);display:block;margin-bottom:2px">${PROJ_LABELS[i]}</label>
+            <input id="admLbl${i}" value="${esc(l)}" style="width:100%;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:6px 8px;border-radius:6px;font-size:11px"/>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">📑 Tab Visibility per Project</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          ${[0,1,2].map(pi=>`<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:10px">
+            <div style="font-size:11px;font-weight:700;margin-bottom:6px;color:var(--tx)">${labels[pi]}</div>
+            ${ALL_TABS.map(t=>{
+              const checked=projTabs[pi].includes(t.id)?'checked':'';
+              return `<label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2);margin-bottom:3px;cursor:pointer">
+                <input type="checkbox" data-proj="${pi}" data-tab="${t.id}" ${checked} style="accent-color:var(--ac)"/>
+                ${t.icon} ${t.label}
+              </label>`;
+            }).join('')}
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">📊 Table Columns</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${ALL_COLS.map(c=>{
+            const checked=visCols.includes(c.k)?'checked':'';
+            return `<label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--tx2);background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;cursor:pointer">
+              <input type="checkbox" data-col="${c.k}" ${checked} style="accent-color:var(--ac)"/>
+              ${c.l}
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">👥 Team Members</h4>
+        <div id="admUsers" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px">
+          <input id="admNewUser" placeholder="שם חדש..." style="flex:1;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:6px 8px;border-radius:6px;font-size:11px"/>
+          <button class="btn btn-p" style="font-size:10px" onclick="addAdminUser()">➕ הוסף</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--bd)">
+        <button class="btn btn-g" onclick="resetAdminCfg()">🔄 Reset to Default</button>
+        <button class="btn btn-g" onclick="closeModal()">ביטול</button>
+        <button class="btn btn-p" onclick="saveAdminSettings()">💾 שמור</button>
+      </div>
+    </div>
+  </div>`;
+  
+  mw('modal').innerHTML=html;
+  
+  // Render user chips
+  const users=cfg.users||['שלומית','שקד'];
+  renderAdminUsers(users);
+}
+
+function renderAdminUsers(users){
+  const el=document.getElementById('admUsers');
+  if(!el)return;
+  el.innerHTML=users.map((u,i)=>`<span style="display:flex;align-items:center;gap:4px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:3px 10px;font-size:10px;color:var(--tx)">
+    ${esc(u)} <span onclick="removeAdminUser(${i})" style="cursor:pointer;color:var(--rs);font-size:12px;font-weight:700">×</span>
+  </span>`).join('');
+  el.dataset.users=JSON.stringify(users);
+}
+
+function addAdminUser(){
+  const inp=document.getElementById('admNewUser');
+  const name=inp.value.trim();if(!name)return;
+  const el=document.getElementById('admUsers');
+  const users=JSON.parse(el.dataset.users||'[]');
+  if(!users.includes(name)){users.push(name);renderAdminUsers(users);}
+  inp.value='';
+}
+
+function removeAdminUser(idx){
+  const el=document.getElementById('admUsers');
+  const users=JSON.parse(el.dataset.users||'[]');
+  users.splice(idx,1);
+  renderAdminUsers(users);
+}
+
+function saveAdminSettings(){
+  const cfg={};
+  
+  // Labels
+  cfg.labels=[0,1,2].map(i=>document.getElementById('admLbl'+i)?.value||PROJ_LABELS[i]);
+  
+  // Tab visibility per project
+  for(let pi=0;pi<3;pi++){
+    const tabs=[];
+    document.querySelectorAll(`input[data-proj="${pi}"][data-tab]`).forEach(cb=>{
+      if(cb.checked)tabs.push(cb.dataset.tab);
+    });
+    cfg['tabs_'+pi]=tabs;
+  }
+  
+  // Column visibility
+  const visCols=[];
+  document.querySelectorAll('input[data-col]').forEach(cb=>{
+    if(cb.checked)visCols.push(cb.dataset.col);
+  });
+  cfg.visCols=visCols;
+  
+  // Users
+  const el=document.getElementById('admUsers');
+  cfg.users=JSON.parse(el?.dataset.users||'["שלומית","שקד"]');
+  
+  saveAdminCfg(cfg);
+  applyAdminCfg();
+  closeModal();
+  toast('⚙️ הגדרות נשמרו!');
+}
+
+function resetAdminCfg(){
+  localStorage.removeItem(ADMIN_KEY);
+  applyAdminCfg();
+  closeModal();
+  toast('🔄 הגדרות אופסו');
+}
+
+function applyAdminCfg(){
+  const cfg=loadAdminCfg();
+  
+  // Apply project labels
+  const labels=cfg.labels||[...PROJ_LABELS];
+  const pb0=mw('pb0');if(pb0)pb0.innerHTML=`👩 ${esc(labels[0])}<span class="s">34 Models · 8 Sizes</span>`;
+  const pb1=mw('pb1');if(pb1)pb1.innerHTML=`👔 ${esc(labels[1])}<span class="s">35 Models · Mixed</span>`;
+  const pb2=mw('pb2');if(pb2)pb2.innerHTML=`${esc(labels[2])}<span class="s">🔒 20 Teams · 220 Players</span>`;
+  
+  // Apply tab visibility for current project
+  const visTabs=cfg['tabs_'+proj]||ALL_TABS.map(t=>t.id);
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const tid=b.dataset.tab;
+    if(tid==='teamkits'){
+      b.style.display=(proj===2 && visTabs.includes('teamkits'))?'':'none';
+    }else{
+      b.style.display=visTabs.includes(tid)?'':'none';
+    }
+  });
+  
+  // Apply user list to dropdown
+  const users=cfg.users||['שלומית','שקד'];
+  const userSel=mw('userSel');
+  if(userSel){
+    const cur=userSel.value;
+    userSel.innerHTML='<option value="">בחר/י שם</option>'+users.map(u=>`<option value="${esc(u)}"${u===cur?' selected':''}>${esc(u)}</option>`).join('');
+  }
+  
+  // Apply to assignment dropdowns in gallery filters
+  const asgnSel=document.querySelector('[data-f="asgn"]');
+  if(asgnSel){
+    const cur=asgnSel.value;
+    asgnSel.innerHTML='<option value="">הכל</option>'+users.map(u=>`<option value="${esc(u)}"${u===cur?' selected':''}>${esc(u)}</option>`).join('')+'<option value="_no">לא משויך</option>';
+  }
+  
+  // Store visCols globally for renderTable to use
+  window._adminVisCols=cfg.visCols||null;
+  
+  renderTable();
+}
+
 function openFbModal(mid,pose){
   const m=MD.find(x=>x.id===mid); if(!m)return;
   const img=dbIm[mid+'_'+pose]||''; const ex=gfb(mid,pose); const cs=ex?.status||'pending'; const cn=ex?.note||'';
@@ -1859,2074 +2076,8 @@ const PDESC={Front:"Standing facing camera, arms relaxed at sides, neutral expre
 const STUDIO="Seamless pure white background. Soft even lighting, minimal shadows. Full body, centered. High sharpness, realistic casting photography.";
 const CONSIST="6-image set. Model identical across all. Natural casting look, NOT editorial.";
 
-// Walmart-style prompts per model (Men B1 + Women B3/4)
-const WALMART_PROMPTS = {
-  // Renee #586
-  586: {
-    "profile": `Extreme macro close-up portrait of a 40 year old Black female, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Diana #622
-  622: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Mixed female, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Mixed female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Mixed female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Mixed female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Mixed female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Mixed female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Tanya #629
-  629: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Black female, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black female, curvy build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Simone #691
-  691: {
-    "profile": `Extreme macro close-up portrait of a 40 year old Black female, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black female, curvy build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Greg #1087
-  1087: {
-    "profile": `Extreme macro close-up portrait of a 37 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Darius #1097
-  1097: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, lean build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, lean build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, lean build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, lean build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, lean build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Nathan #1098
-  1098: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Kevin #1100
-  1100: {
-    "profile": `Extreme macro close-up portrait of a 25 year old Asian male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Raj #1102
-  1102: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Indian male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Indian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Indian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Indian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Indian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Indian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Tyler #1103
-  1103: {
-    "profile": `Extreme macro close-up portrait of a 40 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Connor #1104
-  1104: {
-    "profile": `Extreme macro close-up portrait of a 25 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Caucasian male, athletic build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Caucasian male, athletic build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Caucasian male, athletic build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Caucasian male, athletic build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Caucasian male, athletic build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Miguel #1107
-  1107: {
-    "profile": `Extreme macro close-up portrait of a 25 year old Hispanic male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-25 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Clifton #1112
-  1112: {
-    "profile": `Extreme macro close-up portrait of a 50 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Black male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Black male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Black male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Black male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Black male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Jordan #1113
-  1113: {
-    "profile": `Extreme macro close-up portrait of a 23 year old Middle Eastern male,
-against a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Middle Eastern male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Middle Eastern male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Middle Eastern male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Middle Eastern male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Middle Eastern male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Eddie #1114
-  1114: {
-    "profile": `Extreme macro close-up portrait of a 32 year old Latino male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Latino male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Latino male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Latino male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Latino male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Latino male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Marcus #1115
-  1115: {
-    "profile": `Extreme macro close-up portrait of a 35 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-35 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Curtis #1122
-  1122: {
-    "profile": `Extreme macro close-up portrait of a 40 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Jimmy #1123
-  1123: {
-    "profile": `Extreme macro close-up portrait of a 23 year old Asian male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-23 year old Asian male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Brad #1130
-  1130: {
-    "profile": `Extreme macro close-up portrait of a 40 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-40 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Derek #1133
-  1133: {
-    "profile": `Extreme macro close-up portrait of a 50 year old Middle Eastern male,
-against a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Middle Eastern male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Middle Eastern male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Middle Eastern male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Middle Eastern male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Middle Eastern male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Blake #1135
-  1135: {
-    "profile": `Extreme macro close-up portrait of a 37 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Caucasian male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Patrick #1138
-  1138: {
-    "profile": `Extreme macro close-up portrait of a 43 year old Pacific Islander male,
-against a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Pacific Islander male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Pacific Islander male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Pacific Islander male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Pacific Islander male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Pacific Islander male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Lamar #1142
-  1142: {
-    "profile": `Extreme macro close-up portrait of a 39 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-39 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-39 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-39 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-39 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-39 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // DeShawn #1145
-  1145: {
-    "profile": `Extreme macro close-up portrait of a 32 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Shawn #1147
-  1147: {
-    "profile": `Extreme macro close-up portrait of a 34 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Victor #1150
-  1150: {
-    "profile": `Extreme macro close-up portrait of a 51 year old Hispanic male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-51 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-51 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-51 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-51 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-51 year old Hispanic male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Kendrick #1156
-  1156: {
-    "profile": `Extreme macro close-up portrait of a 27 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-27 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-27 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-27 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-27 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-27 year old Black male, athletic build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Gerald #1174
-  1174: {
-    "profile": `Extreme macro close-up portrait of a 50 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Caucasian male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Caucasian male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Caucasian male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Caucasian male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-50 year old Caucasian male, broad build, regular.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Craig #1176
-  1176: {
-    "profile": `Extreme macro close-up portrait of a 41 year old Caucasian male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-41 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-41 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-41 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-41 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-41 year old Caucasian male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Rico #1178
-  1178: {
-    "profile": `Extreme macro close-up portrait of a 43 year old Hispanic male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Hispanic male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Hispanic male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Hispanic male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Hispanic male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-43 year old Hispanic male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Wendell #1179
-  1179: {
-    "profile": `Extreme macro close-up portrait of a 37 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-37 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Carlos #1183
-  1183: {
-    "profile": `Extreme macro close-up portrait of a 29 year old Hispanic male, against
-a plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-29 year old Hispanic male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-29 year old Hispanic male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-29 year old Hispanic male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-29 year old Hispanic male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-29 year old Hispanic male, lean build, short.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Dwayne #1184
-  1184: {
-    "profile": `Extreme macro close-up portrait of a 32 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-32 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Jerome #1186
-  1186: {
-    "profile": `Extreme macro close-up portrait of a 34 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-34 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-  // Terrell #1188
-  1188: {
-    "profile": `Extreme macro close-up portrait of a 30 year old Black male, against a
-plain grey studio backdrop.
-Natural skin with pores and imperfections. Hair natural. Neutral
-expression.
-Soft window light. Shot on 85mm, shallow depth, eye-level.
-No smoothing, no filters, no AI artifacts.`,
-    "Front": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-30 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Front.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45L": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-30 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Left.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "45R": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-30 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: 45 Right.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Profile 90": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-30 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Profile.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-    "Back": `Full body studio photograph of the SAME subject from the portrait. Face
-must match exactly.
-30 year old Black male, broad build, tall.
-Outfit: black tank top, black shorts, white sneakers.
-Pose: Back.
-White seamless studio background.
-Soft even lighting, minimal shadows.
-Shot on 50mm, eye-level.
-Realistic anatomy, clothing physics, grounded feet.
-No distortion, no artifacts.`,
-  },
-};
+// Prompts now use unified mkP() template for all Walmart models
+
 
 // Pose suffixes to append to base prompt
 const POSE_SUFFIX = {
@@ -3944,20 +2095,40 @@ function mkP(m, poseName) {
     const u = WEFL_UNIFORMS[m._team];
     if (u) return mkWeflPrompt(m, poseName, u);
   }
-  // Use new per-pose Walmart prompts for B2 project models
-  const wp = WALMART_PROMPTS[m.id];
-  if (wp) {
-    const poseMap = {'Front':'Front','45L':'45L','45R':'45R','Profile 90':'Profile 90','Back':'Back','Close-Up':'profile'};
-    const key = poseMap[poseName] || poseName;
-    if (wp[key]) return wp[key];
-    if (wp.profile) return wp.profile;
-  }
-  // fallback for Women B1-2
   const a = ma(m); const wt = mwt(m);
+  const ey = (a.ey||'brown').replace(/_Eyes/,'').replace(/_/,' ').toLowerCase();
+
+  // Build qualifier description
+  const big = ['XL','XXL','3XL','4XL'].includes(m.sz);
+  let bq = a.bd==='broad'&&big?'plus-size/heavy build':a.bd==='broad'?'broad/stocky build':a.bd==='athletic'?'athletic/fit build':a.bd==='lean'?'lean/slim build':a.bd==='regular'&&big?(m.g==='W'?'curvy':'large/heavy build'):'regular build';
+
+  // Height string
+  let hs;
+  if(m.g==='W'){hs=m.h+'cm';}
+  else{const ft=Math.floor(m.h/12);const inch=Math.round(m.h%12);hs=`${ft}'${inch}" (${Math.round(m.h*2.54)}cm)`;}
+
+  // Measurements string (convert men inches→cm)
+  let ms;
+  if(m.g==='W'){
+    ms=`B${m.bu}/W${m.wa}/H${m.hp}cm${m.ins?`, inseam ${m.ins}cm`:''}`;
+  }else{
+    ms=`B${(m.bu*2.54).toFixed(1)}/W${(m.wa*2.54).toFixed(1)}/H${(m.hp*2.54).toFixed(1)}cm${m.ins?`, inseam ${(m.ins*2.54).toFixed(1)}cm`:''}`;
+  }
+
+  const gw = m.g==='W'?'woman':'man';
+
+  // Enhanced Close-Up template
+  if(poseName==='Close-Up'){
+    const wardCU = m.g==='W'
+      ?'Black ribbed tank top with wide straps visible at shoulders. No accessories, jewelry, or props.'
+      :'Fitted white crew-neck tee visible at shoulders/neckline. No accessories, jewelry, or props.';
+    return `GOAL: Generate an AI fashion model inspired by this type. Do NOT copy a real person. Maintain matching general attributes.\nMODEL: "${m.nm}" \u2014 ${cap(a.st)}, ${bq}, size ${m.sz}, ${hs}, ~${wt}kg (${bq}). ${cap(a.sk)} skin, ${a.eth} ethnicity, ${a.hr} hair, ${ey} eyes. ${ms}. Body weight should visually match a ${bq} ${hs} ${gw} weighing approximately ${wt}kg. Trait: ${m.tr}.\nPOSE [Close-Up]: Head and shoulders close-up portrait. Face filling ~60% of frame. Same lighting as body shots but tighter crop. Skin texture, eye color, hair texture, facial structure. Neutral expression, slight natural smile. 85mm, shallow DOF, eyes sharp.\nSTUDIO: Seamless pure white background. Soft even beauty lighting with subtle fill. Head and shoulders framing. High sharpness, realistic casting close-up.\nWARDROBE: ${wardCU}\nCONSISTENCY: 6-image set (Front, 45L, 45R, Profile 90, Back, Close-Up). Model identical across all. Uniform across all models. Natural casting look, NOT editorial.`.trim();
+  }
+
+  // Other poses — existing template
   const wardW = 'Black ribbed tank top, black biker shorts, white minimal sneakers.';
   const wardM = 'Fitted white crew-neck tee, dark slim chinos, white sneakers.';
   const wardrobe = m.g === 'W' ? wardW : wardM;
-  const ey = (a.ey||'brown').replace(/_Eyes/,'').replace(/_/,' ').toLowerCase();
   return `GOAL: Generate an AI fashion model inspired by this type. Do NOT copy a real person.\n\nMODEL: "${m.nm}" \u2014 ${cap(a.st)} stature, ${a.bd} build, size ${m.sz}, ${m.h}${m.g==='M'?'"':'cm'}, ~${wt}kg.\n${cap(a.sk)} skin, ${a.eth} ethnicity, ${a.hr} hair, ${ey} eyes.\nB/Chest: ${m.bu} | Waist: ${m.wa} | Hips: ${m.hp}${m.ins?` | Inseam: ${m.ins}`:''}\nTRAIT: ${m.tr}\n\nPOSE [${poseName}]: ${PDESC[poseName]||poseName}\n\nSTUDIO: ${STUDIO}\n\nWARDROBE: ${wardrobe}\n\nCONSISTENCY: ${CONSIST}`.trim();
 }
 
@@ -4046,7 +2217,11 @@ function swP(mid,idx){
 function renderTable(){
   const AFIELDS=['sk','hr','eth','ey','bd','st','ag'];
   const ALBL={sk:'Skin',hr:'Hair',eth:'Eth',ey:'Eyes',bd:'Body',st:'Stature',ag:'Age'};
-  const cols=[{k:'nm',l:'Name'},{k:'id',l:'ID'},{k:'g',l:'G'},{k:'_a',l:'Assigned'},{k:'_s',l:'Status'},{k:'_d',l:'Prog'},{k:'_dlv',l:'📦'},{k:'sz',l:'Sz'},{k:'h',l:'H'},{k:'bu',l:'B'},{k:'wa',l:'W'},{k:'hp',l:'Hp'},{k:'_wt',l:'Weight kg'},...AFIELDS.map(k=>({k:'_e_'+k,l:ALBL[k]})),{k:'tr',l:'Trait'}];
+  let cols=[{k:'nm',l:'Name'},{k:'id',l:'ID'},{k:'g',l:'G'},{k:'_a',l:'Assigned'},{k:'_s',l:'Status'},{k:'_d',l:'Prog'},{k:'_dlv',l:'📦'},{k:'sz',l:'Sz'},{k:'h',l:'H'},{k:'bu',l:'B'},{k:'wa',l:'W'},{k:'hp',l:'Hp'},{k:'_wt',l:'Weight kg'},...AFIELDS.map(k=>({k:'_e_'+k,l:ALBL[k]})),{k:'tr',l:'Trait'}];
+  // Filter columns by admin config
+  if(window._adminVisCols && window._adminVisCols.length>0){
+    cols=cols.filter(c=>window._adminVisCols.includes(c.k));
+  }
   let h='<thead><tr>'+cols.map(c=>`<th>${c.l}</th>`).join('')+'</tr></thead><tbody>';
   MD.forEach(m=>{
     const st=gst(m.id); const dc=gdone(m.id); const done=dc===6;
@@ -4821,6 +2996,7 @@ async function boot(){
 
   // init project A
   initUI();
+  applyAdminCfg();
 
   // overview is the active tab — render charts after a tick
   setTimeout(()=>renderOverview(), 100);
