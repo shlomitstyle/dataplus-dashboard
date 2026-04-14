@@ -294,14 +294,16 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
             📏 מד גובה
           </label>
           <button class="btn btn-g" style="font-size:10px;padding:4px 8px" onclick="qcAutoMeasure()">🎯 Auto-Detect</button>
+          <button class="btn btn-p" id="qcMeasureBtn" style="font-size:10px;padding:4px 8px" onclick="qcToggleMeasure()" title="לחצי ואז בחרי 2 נקודות">📐 מדידה</button>
+          <button class="btn btn-g" style="font-size:10px;padding:4px 8px" onclick="qcClearMeasures()" title="נקה כל המדידות">🗑️</button>
         </div>
         <div class="qc-oc" style="display:flex;gap:8px;align-items:stretch">
-          <!-- Vertical height ruler 0-200cm -->
-          <div id="qcRulerCol" style="position:relative;width:58px;background:var(--sf2);border:1px solid var(--bd);border-radius:7px;flex-shrink:0"></div>
+          <!-- Vertical height ruler 0-200cm — DRAGGABLE -->
+          <div id="qcRulerCol" style="position:relative;width:62px;background:var(--sf2);border:1px solid var(--bd);border-radius:7px;flex-shrink:0;cursor:ns-resize;user-select:none" title="גרור למעלה/למטה כדי ליישר את ה-0 עם רגלי הדוגמנית"></div>
           <!-- Image canvas area -->
           <div style="flex:1;position:relative">
             <div class="qc-ph" id="qcPh" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:760px"><div style="text-align:center"><div style="font-size:36px;opacity:.15;margin-bottom:8px">🔬</div>בחרי מודל</div></div>
-            <canvas id="qcCv" width="520" height="760" style="display:none;max-width:100%"></canvas>
+            <canvas id="qcCv" width="520" height="800" style="display:none;max-width:100%;cursor:crosshair"></canvas>
           </div>
         </div>
         <div id="qcInfo" style="font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace;text-align:center"></div>
@@ -313,11 +315,15 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
           <div id="qcPoseImgs" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px"></div>
         </div>
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px">📏 Height Ref</div>
-          <div id="qcHBar" style="position:relative;height:180px;background:var(--sf2);border-radius:7px;border:1px solid var(--bd);overflow:hidden"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px">📐 מדידות נקודה לנקודה</div>
+          <div id="qcMeasureList" style="font-size:10px;color:var(--tx3)">לחצי על 📐 מדידה ואז על 2 נקודות בתמונה</div>
         </div>
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px">✅ QC Check</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px">✅ QC Checklist</div>
+          <div id="qcChecklist" style="font-size:11px;color:var(--tx3)">בחרי מודל</div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px">
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px">📊 QC Check</div>
           <div id="qcRes" style="font-size:11px;color:var(--tx3);text-align:center;padding:14px 0">בחרי מודל</div>
         </div>
         <div style="background:var(--sf);border:1px solid var(--ac);border-radius:9px;padding:11px">
@@ -2384,10 +2390,15 @@ function renderTable(){
 // QC
 // ══════════════════════════════════════════════
 let qcM=null, qcImg=null, qcTblVis=false, qcDetectedBounds=null;
+let qcRulerOffset=0; // px shift of ruler+ground (to align 0 with model's actual feet)
+let qcMeasureMode=false, qcMeasurePoints=[], qcMeasures=[];
+const QC_CHECKLIST_KEY='dp_qc_checklist';
+function loadQCChecklist(mid){try{return (JSON.parse(localStorage.getItem(QC_CHECKLIST_KEY))||{})[mid]||{};}catch(e){return {};}}
+function saveQCChecklist(mid,data){try{const a=JSON.parse(localStorage.getItem(QC_CHECKLIST_KEY))||{};a[mid]=data;localStorage.setItem(QC_CHECKLIST_KEY,JSON.stringify(a));}catch(e){}}
 
 function qcToggle(){qcTblVis=!qcTblVis;mw('qcMain').style.display=qcTblVis?'none':'grid';mw('qcTable').style.display=qcTblVis?'block':'none';mw('qcViewBtn').textContent=qcTblVis?'🔬 QC':'📊 טבלה';if(qcTblVis)renderQCTable();}
 function qcFilterSz(){const sz=mw('qcSzF').value;mw('qcModel').innerHTML='<option value="">— בחרי מודל —</option>'+(sz?MD.filter(m=>m.sz===sz):MD).map(m=>`<option value="${m.id}">${m.nm} #${m.id} — ${m.sz}</option>`).join('');}
-function qcPick(){const mid=parseInt(mw('qcModel').value);if(!mid){qcM=null;qcDetectedBounds=null;qcDraw();qcRenderProf();qcRenderRes();return;}qcM=MD.find(m=>m.id===mid);qcDetectedBounds=null;if(qcM){qcRenderProf();qcLoadPoseImgs();qcLoadPose();qcHBar();qcCheck();qcDraw();}}
+function qcPick(){const mid=parseInt(mw('qcModel').value);if(!mid){qcM=null;qcDetectedBounds=null;qcMeasures=[];qcMeasurePoints=[];qcRulerOffset=0;qcDraw();qcRenderProf();qcRenderRes();qcRenderChecklist();qcRenderMeasures();return;}qcM=MD.find(m=>m.id===mid);qcDetectedBounds=null;qcMeasures=[];qcMeasurePoints=[];qcRulerOffset=0;if(qcM){qcRenderProf();qcLoadPoseImgs();qcLoadPose();qcHBar();qcCheck();qcDraw();qcRenderChecklist();qcRenderMeasures();qcInitRulerDrag();const cv=mw('qcCv');if(cv&&!cv._clkInited){cv._clkInited=true;cv.addEventListener('click',qcCanvasClick);}}}
 function qcLoadPose(){if(!qcM)return;qcDetectedBounds=null;const url=dbIm[qcM.id+'_'+mw('qcPose').value];if(url){const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{qcImg=img;qcDraw();setTimeout(()=>{try{qcAutoMeasure();}catch(e){}},200);};img.src=url;}}
 function qcUpload(e){const f=e.target.files[0];if(!f)return;qcDetectedBounds=null;const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{qcImg=img;qcDraw();setTimeout(()=>{try{qcAutoMeasure();}catch(e){}},200);toast('נטען');};img.src=ev.target.result;};r.readAsDataURL(f);}
 function qcLoadPoseImgs(){if(!qcM)return;let h='';POSES.forEach(p=>{const url=dbIm[qcM.id+'_'+p];if(url)h+=`<img src="${url}" style="width:34px;height:46px;border-radius:5px;object-fit:cover;border:2px solid var(--gn);cursor:pointer" onclick="qcUseImg('${url}')" title="${p}"/>`});mw('qcPoseImgs').innerHTML=h||'<div style="font-size:8px;color:var(--tx3)">אין תמונות</div>';}
@@ -2709,7 +2720,7 @@ function qcDraw(){
   // Canvas represents 0-200cm, so pxPerCm = H / 200
   const maxCm=200;
   const pxPerCm=H/maxCm;
-  const groundY=H-20; // 20px padding at bottom = 0cm mark
+  const groundY=H-20+qcRulerOffset; // 20px padding at bottom = 0cm mark, plus user drag offset
   
   if(rulerMode && qcM){
     // Draw 0-200cm reference lines inside canvas
@@ -2799,7 +2810,33 @@ function qcDraw(){
     ctx.restore();
   }
   
-  mw('qcInfo').textContent=qcM?`${qcM.nm}·${qcM.sz}·Scale:${sc}%·Opacity:${Math.round(op*100)}%${rulerMode?'·RULER':''}`:'';
+  // ── Draw point-to-point measurements (cyan lines + labels)
+  if(qcMeasures.length||qcMeasurePoints.length){
+    ctx.save();
+    qcMeasures.forEach(meas=>{
+      ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(meas.p1.x,meas.p1.y);ctx.lineTo(meas.p2.x,meas.p2.y);ctx.stroke();
+      [meas.p1,meas.p2].forEach(p=>{ctx.fillStyle='#22d3ee';ctx.beginPath();ctx.arc(p.x,p.y,4,0,2*Math.PI);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();});
+      const mx=(meas.p1.x+meas.p2.x)/2, my=(meas.p1.y+meas.p2.y)/2;
+      const lbl=meas.cm.toFixed(1)+'cm';
+      ctx.font='bold 12px JetBrains Mono';
+      const tw=ctx.measureText(lbl).width;
+      ctx.fillStyle='rgba(0,0,0,.85)';ctx.fillRect(mx-tw/2-5,my-9,tw+10,18);
+      ctx.strokeStyle='#22d3ee';ctx.lineWidth=1;ctx.strokeRect(mx-tw/2-5,my-9,tw+10,18);
+      ctx.fillStyle='#22d3ee';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(lbl,mx,my);
+    });
+    if(qcMeasureMode && qcMeasurePoints.length===1){
+      const p=qcMeasurePoints[0];
+      ctx.fillStyle='#facc15';ctx.beginPath();ctx.arc(p.x,p.y,5,0,2*Math.PI);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#facc15';ctx.font='bold 11px Outfit';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText('לחצי על נקודה שניה',p.x,p.y-12);
+    }
+    ctx.restore();
+  }
+  
+  mw('qcInfo').textContent=qcM?`${qcM.nm}·${qcM.sz}·Scale:${sc}%·Opacity:${Math.round(op*100)}%${rulerMode?'·RULER':''}${qcMeasureMode?'·📐 MEASURE':''}${qcRulerOffset?'·Δ'+qcRulerOffset+'px':''}`:'';
   
   // Also render the side ruler column
   qcRenderRuler(qcM);
@@ -2850,8 +2887,167 @@ function qcRenderRuler(m){
       <div style="position:absolute;top:calc(${aPct}% + 8px);right:2px;background:${col2};color:#fff;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:700;z-index:6">${aCm.toFixed(0)}</div>`;
   }
   h+='</div>';
-  col.innerHTML=h;
+  // Apply offset visually so side ruler stays in sync with canvas groundY
+  if(qcRulerOffset){
+    col.innerHTML='<div style="position:absolute;top:0;bottom:0;left:0;right:0;transform:translateY('+qcRulerOffset+'px)">'+h+'</div>';
+  }else{
+    col.innerHTML=h;
+  }
 }
+
+// ══════════════════════════════════════════════
+// MEASURE TOOL — point-to-point distance in cm (calibrated to ruler scale)
+// ══════════════════════════════════════════════
+function qcToggleMeasure(){
+  qcMeasureMode=!qcMeasureMode;
+  qcMeasurePoints=[];
+  const btn=mw('qcMeasureBtn');
+  if(btn){
+    if(qcMeasureMode){btn.style.background='var(--gn)';btn.style.color='#fff';btn.style.borderColor='var(--gn)';}
+    else{btn.style.background='';btn.style.color='';btn.style.borderColor='';}
+  }
+  const cv=mw('qcCv');if(cv)cv.style.cursor=qcMeasureMode?'crosshair':'default';
+  toast(qcMeasureMode?'📐 לחצי על 2 נקודות בתמונה':'❌ מצב מדידה כובה');
+  qcDraw();
+}
+
+function qcCanvasClick(e){
+  if(!qcMeasureMode||!qcM)return;
+  const cv=mw('qcCv');
+  const rect=cv.getBoundingClientRect();
+  const sx=cv.width/rect.width, sy=cv.height/rect.height;
+  const x=(e.clientX-rect.left)*sx, y=(e.clientY-rect.top)*sy;
+  qcMeasurePoints.push({x,y});
+  if(qcMeasurePoints.length===2){
+    const pxPerCm=cv.height/200;
+    const dx=qcMeasurePoints[1].x-qcMeasurePoints[0].x;
+    const dy=qcMeasurePoints[1].y-qcMeasurePoints[0].y;
+    const distCm=Math.sqrt(dx*dx+dy*dy)/pxPerCm;
+    qcMeasures.push({p1:qcMeasurePoints[0],p2:qcMeasurePoints[1],label:'M'+(qcMeasures.length+1),cm:distCm});
+    qcMeasurePoints=[];
+    qcRenderMeasures();
+    toast('📐 '+distCm.toFixed(1)+'cm');
+  }
+  qcDraw();
+}
+
+function qcRenderMeasures(){
+  const el=mw('qcMeasureList');if(!el)return;
+  if(!qcMeasures.length){el.innerHTML='<div style="color:var(--tx3);font-size:10px">לחצי על 📐 מדידה ואז על 2 נקודות בתמונה</div>';return;}
+  // Build expected map for B1 detailed measurements
+  let expected={};
+  if(qcM&&qcM._detailed){
+    let det;try{det=typeof qcM._detailed==='string'?JSON.parse(qcM._detailed):qcM._detailed;}catch(e){det={};}
+    function avg(o){if(!o)return null;if(o.exact)return o.exact;if(o.low&&o.high)return (o.low+o.high)/2;return null;}
+    expected={
+      shoulder_w:avg(det['Shoulder width (biacromial)']),
+      thigh:avg(det['Thigh circumference (fullest)']),
+      calf:avg(det['Calf circumference']),
+      arm:avg(det['Upper arm circumference']),
+      neck:avg(det['Neck circumference']),
+      inseam:avg(det['Inseam']),
+      torso:avg(det['Torso length (shoulder to crotch)'])
+    };
+  }
+  const labels={shoulder_w:'כתפיים',thigh:'ירך',calf:'שוק',arm:'זרוע',neck:'צוואר',inseam:'אינסים',torso:'גו'};
+  el.innerHTML=qcMeasures.map((m,i)=>{
+    const optHtml=Object.entries(labels).map(([k,l])=>`<option value="${k}" ${m.matchTo===k?'selected':''}>${l}${expected[k]?' ('+expected[k].toFixed(0)+'cm)':''}</option>`).join('');
+    let cmpHtml='';
+    if(m.matchTo&&expected[m.matchTo]){
+      const diff=m.cm-expected[m.matchTo];
+      const pct=Math.abs(diff)/expected[m.matchTo]*100;
+      const col=pct<5?'#10b981':pct<15?'#f59e0b':'#ef4444';
+      const ic=pct<5?'✅':pct<15?'⚠️':'❌';
+      cmpHtml=`<span style="font-size:9px;color:${col}" title="יעד: ${expected[m.matchTo].toFixed(1)}cm">${ic}${diff>=0?'+':''}${diff.toFixed(1)}</span>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:4px;padding:5px 6px;background:var(--sf2);border-radius:5px;margin-bottom:3px">
+      <span style="background:#22d3ee;color:#000;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800">${m.label}</span>
+      <select onchange="qcMeasures[${i}].matchTo=this.value;qcRenderMeasures()" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-size:9px;padding:2px 3px;border-radius:3px;min-width:0">
+        <option value="">— ללא —</option>${optHtml}
+      </select>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#22d3ee">${m.cm.toFixed(1)}</span>
+      ${cmpHtml}
+      <span onclick="qcMeasures.splice(${i},1);qcRenderMeasures();qcDraw()" style="cursor:pointer;color:var(--rs);font-weight:700;padding:0 3px">×</span>
+    </div>`;
+  }).join('');
+}
+
+function qcClearMeasures(){
+  qcMeasures=[];qcMeasurePoints=[];
+  qcRenderMeasures();qcDraw();
+  toast('🗑️ מדידות נמחקו');
+}
+
+// ══════════════════════════════════════════════
+// DRAGGABLE RULER — drag column up/down to align 0 with model's feet
+// ══════════════════════════════════════════════
+function qcInitRulerDrag(){
+  const col=mw('qcRulerCol');if(!col || col._dragInited)return;
+  col._dragInited=true;
+  let isDragging=false, startY=0, startOffset=0;
+  col.addEventListener('mousedown',e=>{isDragging=true;startY=e.clientY;startOffset=qcRulerOffset;e.preventDefault();});
+  document.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    qcRulerOffset=Math.max(-300,Math.min(300,startOffset+(e.clientY-startY)));
+    qcDraw();
+  });
+  document.addEventListener('mouseup',()=>{if(isDragging){isDragging=false;}});
+  col.addEventListener('touchstart',e=>{isDragging=true;startY=e.touches[0].clientY;startOffset=qcRulerOffset;});
+  col.addEventListener('touchmove',e=>{if(!isDragging)return;qcRulerOffset=Math.max(-300,Math.min(300,startOffset+(e.touches[0].clientY-startY)));qcDraw();e.preventDefault();},{passive:false});
+  col.addEventListener('touchend',()=>{isDragging=false;});
+}
+
+// ══════════════════════════════════════════════
+// QC CHECKLIST — per-model checkboxes (saved to localStorage)
+// ══════════════════════════════════════════════
+const QC_CHECKS=[
+  {k:'identity',l:'Identity preserved (face)',ic:'👤'},
+  {k:'skin',l:'Skin realism fixed',ic:'🎨'},
+  {k:'legs',l:'Legs proportion fixed',ic:'🦵'},
+  {k:'face_def',l:'Face definition (cheekbones/jaw)',ic:'📐'},
+  {k:'eyes',l:'Eyes/brows symmetric',ic:'👁️'},
+  {k:'wardrobe',l:'Wardrobe ok',ic:'👕'},
+  {k:'background',l:'Background ok',ic:'🖼️'},
+  {k:'consistency',l:'Pose consistency across all 6',ic:'🔄'}
+];
+
+function qcRenderChecklist(){
+  const el=mw('qcChecklist');if(!el)return;
+  if(!qcM){el.innerHTML='<div style="color:var(--tx3);text-align:center;padding:10px;font-size:10px">בחרי מודל</div>';return;}
+  const data=loadQCChecklist(qcM.id);
+  const checked=QC_CHECKS.filter(c=>data[c.k]===true).length;
+  const pct=Math.round(checked/QC_CHECKS.length*100);
+  const cls=pct===100?'gn':pct>=50?'am':'rs';
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;padding:5px 7px;background:var(--sf2);border-radius:5px">
+    <span style="font-size:10px;font-weight:700">${esc(qcM.nm)} #${qcM.id}</span>
+    <span style="font-size:10px;font-weight:800;color:var(--${cls})">${checked}/${QC_CHECKS.length} (${pct}%)</span>
+  </div>
+  ${QC_CHECKS.map(c=>{
+    const isC=data[c.k]===true;
+    return `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;border-radius:4px;font-size:10px;background:${isC?'rgba(16,185,129,.08)':'transparent'};border:1px solid ${isC?'rgba(16,185,129,.25)':'transparent'};margin-bottom:2px">
+      <input type="checkbox" ${isC?'checked':''} onchange="qcToggleCheck('${c.k}',this.checked)" style="accent-color:var(--gn);width:13px;height:13px;cursor:pointer;flex-shrink:0"/>
+      <span style="flex-shrink:0">${c.ic}</span>
+      <span style="flex:1;color:${isC?'var(--gn)':'var(--tx2)'}">${c.l}</span>
+    </label>`;
+  }).join('')}
+  <div style="display:flex;gap:4px;margin-top:6px">
+    <input id="qcChkNote" placeholder="הערה כללית..." value="${esc(data._note||'')}" style="flex:1;background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:4px 7px;border-radius:4px;font-size:10px"/>
+    <button class="btn btn-g" style="font-size:9px;padding:3px 8px" onclick="qcSaveNote()">💾</button>
+  </div>`;
+}
+
+function qcToggleCheck(key,checked){
+  if(!qcM)return;
+  const data=loadQCChecklist(qcM.id);data[key]=checked;
+  saveQCChecklist(qcM.id,data);qcRenderChecklist();
+}
+function qcSaveNote(){
+  if(!qcM)return;
+  const inp=mw('qcChkNote');if(!inp)return;
+  const data=loadQCChecklist(qcM.id);data._note=inp.value.trim();
+  saveQCChecklist(qcM.id,data);qcRenderChecklist();toast('💾 נשמר');
+}
+
 function qcDl(){const cv=mw('qcCv');if(!cv||cv.style.display==='none'){toast('אין תמונה');return;}const a=document.createElement('a');a.download=`QC_${qcM?qcM.nm:'export'}.png`;a.href=cv.toDataURL('image/png');document.body.appendChild(a);a.click();document.body.removeChild(a);toast('⬇️ PNG');}
 function renderQCTable(){
   const sizes=[...new Set(MD.map(m=>m.sz))].sort((a,b)=>SO.indexOf(a)-SO.indexOf(b));
@@ -3087,6 +3283,15 @@ function dlKitImg(teamName,side){
 // ══════════════════════════════════════════════
 // FIXES TAB (Batch 1)
 // ══════════════════════════════════════════════
+function mkFacePrompt(m){
+  const a=ma(m);
+  const ey=(a.ey||'brown').toLowerCase().replace(/_eyes/,'').replace(/_/,' ');
+  const gw=m.g==='W'?'woman':'man';
+  const age=m.ag||(m.g==='W'?'20-30':'25-35');
+  const hair=a.hr||'natural';
+  return `Generate a close-up portrait of the same model from this full-body reference image. Do NOT copy a real person.\n\nMODEL: "${m.nm}" — ${gw}, age ${age}, ${cap(a.sk)} skin tone, ${a.eth} ethnicity, ${hair} hair, ${ey} eyes.\n\nMATCH EXACTLY from the reference body image:\n• Face structure, bone structure, and facial proportions\n• Exact skin tone and undertone\n• Hair color, texture, length, and style\n• Ethnicity and age\n• Body type context (${m.sz}, ${a.bd} build)\n\nPOSE [Close-Up]: Head and shoulders portrait. Face filling ~60% of frame. Neutral expression with slight natural smile. Eyes looking directly at camera.\n\nSTUDIO: Seamless pure white background. Soft even beauty lighting with subtle fill light. 85mm lens, shallow depth of field, eyes tack-sharp.\n\nWARDROBE: ${m.g==='W'?'Black ribbed tank top with wide straps visible at shoulders':'Fitted white or black crew-neck tee visible at shoulders'}. No accessories, jewelry, or props.\n\nCRITICAL: Natural skin texture with visible pores and micro-imperfections — NOT airbrushed. Natural casting portrait style, NOT editorial. Must be recognizably the same person as the body reference.`;
+}
+
 function getFixes(m){
   if(!m._fixes)return [];
   try{return typeof m._fixes==='string'?JSON.parse(m._fixes):m._fixes;}catch(e){return [];}
@@ -3152,13 +3357,20 @@ function renderFixes(){
     const brand=m._brand||'';
     const statusCol=status==='Approved'?'var(--gn)':status==='Reject'?'var(--rs)':'var(--am)';
     const statusBg=status==='Approved'?'rgba(16,185,129,.1)':status==='Reject'?'rgba(239,68,68,.1)':'rgba(245,158,11,.1)';
-    const hero=dbIm[m.id+'_Front']||dbIm[m.id+'_Close-Up']||'';
+    const heroFront=dbIm[m.id+'_Front']||'';
+    const heroCloseup=dbIm[m.id+'_Close-Up']||'';
     const fixPrompt=mkFixPrompt(m);
+    const facePrompt=mkFacePrompt(m);
     
     return `<div style="background:var(--sf);border:2px solid ${m.cl}40;border-radius:12px;overflow:hidden">
       <div style="background:linear-gradient(90deg,${m.cl}20,transparent);padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bd)">
-        <div style="width:46px;height:58px;border-radius:6px;overflow:hidden;background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          ${hero?`<img src="${hero}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:22px;opacity:.2">👤</div>`}
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <div style="width:42px;height:54px;border-radius:6px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center" title="Front">
+            ${heroFront?`<img src="${heroFront}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:18px;opacity:.2">👤</div>`}
+          </div>
+          <div style="width:42px;height:54px;border-radius:6px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;border:1px solid var(--ac);position:relative" title="Close-Up">
+            ${heroCloseup?`<img src="${heroCloseup}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:9px;text-align:center;color:var(--ac);line-height:1.1;padding:2px">📸<br>אין<br>CU</div>`}
+          </div>
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:800;color:${m.cl}">${m.nm} <span style="color:var(--tx3);font-size:10px;font-weight:500">#${m.id}</span></div>
@@ -3180,10 +3392,15 @@ function renderFixes(){
             </div>
           </div>`).join('')}
         </div>
-        <details style="margin-bottom:8px">
+        <details style="margin-bottom:5px">
           <summary style="font-size:10px;font-weight:700;color:var(--ac);cursor:pointer;padding:5px 0">📝 Fix Prompt (Ready to copy)</summary>
           <textarea readonly class="pbox" style="width:100%;min-height:150px;resize:vertical;font-size:9px;font-family:'JetBrains Mono',monospace;line-height:1.4;margin-top:5px">${esc(fixPrompt)}</textarea>
         </details>
+        ${!heroCloseup?`<details style="margin-bottom:8px">
+          <summary style="font-size:10px;font-weight:700;color:var(--pk);cursor:pointer;padding:5px 0">📸 Generate Close-Up Prompt (face from body)</summary>
+          <textarea readonly class="pbox" style="width:100%;min-height:120px;resize:vertical;font-size:9px;font-family:'JetBrains Mono',monospace;line-height:1.4;margin-top:5px">${esc(facePrompt)}</textarea>
+          <button class="btn btn-p" style="font-size:10px;padding:5px 10px;margin-top:5px;width:100%" onclick='navigator.clipboard.writeText(${JSON.stringify(facePrompt)}).then(()=>toast("📸 פרומפט פנים הועתק!"))'>📋 Copy Face Prompt</button>
+        </details>`:''}
         <div style="display:flex;gap:5px">
           <button class="btn btn-p" style="flex:1;font-size:10px;padding:6px" onclick='navigator.clipboard.writeText(${JSON.stringify(fixPrompt)}).then(()=>toast("📋 הועתק!"))'>📋 Copy Prompt</button>
           <button class="btn btn-g" style="font-size:10px;padding:6px 10px" onclick="fxOpenQC(${m.id})">🔬 QC</button>
