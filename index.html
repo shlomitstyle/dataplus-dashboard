@@ -119,6 +119,12 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
 /* QC */
 .qc-oc{position:relative;display:flex;justify-content:center;align-items:center;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;min-height:480px;overflow:hidden}
 .qc-ph{text-align:center;padding:40px;color:var(--tx3);font-size:12px}
+.fx-col{min-width:260px;flex:1;background:var(--sf);border:1px solid var(--bd);border-radius:10px;display:flex;flex-direction:column}
+.fx-col-head{color:#fff;font-size:12px;font-weight:800;text-align:center;padding:8px;border-radius:9px 9px 0 0;text-transform:uppercase;letter-spacing:1px}
+.fx-cards{flex:1;padding:6px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:65vh}
+.fx-card{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px;cursor:default;transition:box-shadow .15s}
+.fx-card:hover{box-shadow:0 0 0 2px var(--ac)}
+.fx-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:8px;font-weight:800;color:#fff;letter-spacing:.5px}
 .qc-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--bd);background:var(--sf)}
 .qc-wrap table{width:100%;border-collapse:collapse;font-size:10px;direction:ltr;text-align:center}
 .qc-wrap th{background:var(--sf2);padding:9px 8px;font-weight:700;color:var(--ac2);font-size:8px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;border-bottom:2px solid var(--ac)}
@@ -175,6 +181,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
 .fab-btn:hover{background:var(--ac);color:#fff}
 @media(max-width:900px){.chart-grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .card{animation:fu .25s ease both}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 </style>
@@ -187,7 +194,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
       <h1><span>DataPlus</span> Model Dashboard<span class="dot"></span></h1>
       <div class="sub" id="hdrSub">Real-Time · Supabase Sync</div>
     </div>
-    <div class="badge">LIVE SYNC</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <div class="badge">LIVE SYNC</div>
+      <button onclick="dashboardLogout()" title="יציאה" style="background:none;border:1px solid var(--bd);border-radius:6px;color:var(--tx2);font-size:13px;padding:3px 8px;cursor:pointer">🔓</button>
+    </div>
   </div>
 
   <div class="banner" id="banner">⚠️ לא מחובר ל-Supabase — מצב מקומי.<button class="btn btn-g" style="border-color:var(--rs);color:var(--rs);padding:3px 10px;font-size:11px;margin-right:8px" onclick="location.reload()">רענון</button></div>
@@ -400,20 +410,40 @@ body{background:var(--bg);color:var(--tx);font-family:'Outfit',sans-serif;min-he
 
   <!-- FIXES -->
   <div id="tab-fixes" class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div>
-        <h3 style="font-size:17px;font-weight:800">🔧 Fix Prompts — Client Feedback Round 2</h3>
-        <p style="color:var(--tx2);font-size:11px">פרומפטים לתיקון לפי הערות הלקוח — משלבים את הפרופיל הבסיסי + פעולות נדרשות</p>
+        <h3 style="font-size:17px;font-weight:800">🔧 FY26 Batch 1 — Revisions Board</h3>
+        <p style="color:var(--tx2);font-size:11px">לוח תיקונים בסגנון Kanban — גרירת כרטיסים לפי שלבי עבודה</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <div class="fg"><label>סטטוס</label><select id="fxFilter" onchange="renderFixes()"><option value="">הכל</option><option value="Revise">Revise</option><option value="Reject">Reject</option><option value="Approved">Approved</option></select></div>
-        <button class="btn btn-p" onclick="fxExportAll()">⬇️ ייצא הכל</button>
+        <div class="fg"><label>תגית</label><select id="fxTagFilter" onchange="renderFixes()"><option value="">הכל</option><option value="LEG">🔵 LEG</option><option value="SKIN">🟢 SKIN</option><option value="BROW">🟡 BROW</option><option value="FACE">🔴 FACE</option><option value="COLOR">🟠 COLOR</option></select></div>
+        <button class="btn btn-p" onclick="fxExportAll()">⬇️ ייצא</button>
       </div>
     </div>
-    <div style="font-size:10px;color:var(--tx3);padding:8px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;margin-bottom:14px">
-      💡 <strong>איך זה עובד:</strong> כל כרטיס מציג את הדוגמנית + הבעיות שהלקוח זיהה + פעולות נדרשות + פרומפט לתיקון מוכן להעתקה. הפרומפט משלב את המאפיינים לשמירה (KEEP) + התיקונים הנדרשים (FIXES).
+    <!-- Global Rules -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:200px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px">
+        <div style="font-size:9px;font-weight:700;color:var(--tx2);text-transform:uppercase;margin-bottom:5px">📋 כללים</div>
+        <div style="font-size:10px;color:var(--tx3);line-height:1.5">✓ Full body, white background<br>✓ Same outfit + identity<br>✓ Fix only per notes<br>✓ מקסימום 3-4 תיקונים לדוגמנית</div>
+      </div>
+      <div style="flex:2;min-width:300px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px">
+        <div style="font-size:9px;font-weight:700;color:var(--tx2);text-transform:uppercase;margin-bottom:5px">🌐 Global Fixes Library</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px" id="fxGlobalTags"></div>
+      </div>
+      <div style="flex:1;min-width:160px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px">
+        <div style="font-size:9px;font-weight:700;color:var(--tx2);text-transform:uppercase;margin-bottom:5px">📊 Progress</div>
+        <div id="fxProgress" style="font-size:10px;color:var(--tx3)"></div>
+      </div>
     </div>
-    <div id="fxGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px"></div>
+    <!-- Kanban Columns -->
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;min-height:500px" id="fxKanban">
+      <div class="fx-col" data-stage="tofix"><div class="fx-col-head" style="background:#ef4444">To Fix</div><div class="fx-cards" id="fxCol_tofix"></div></div>
+      <div class="fx-col" data-stage="prompt"><div class="fx-col-head" style="background:#f59e0b">Prompt</div><div class="fx-cards" id="fxCol_prompt"></div></div>
+      <div class="fx-col" data-stage="generated"><div class="fx-col-head" style="background:#8b5cf6">Generated</div><div class="fx-cards" id="fxCol_generated"></div></div>
+      <div class="fx-col" data-stage="qc"><div class="fx-col-head" style="background:#06b6d4">QC Check</div><div class="fx-cards" id="fxCol_qc"></div></div>
+      <div class="fx-col" data-stage="ready"><div class="fx-col-head" style="background:#10b981">Ready</div><div class="fx-cards" id="fxCol_ready"></div></div>
+    </div>
   </div>
 
   <!-- AI -->
@@ -3283,13 +3313,59 @@ function dlKitImg(teamName,side){
 // ══════════════════════════════════════════════
 // FIXES TAB (Batch 1)
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// FACE PROMPT — generate headshot from full-body reference
+// Uses user-specified template + appends client feedback
+// ══════════════════════════════════════════════
 function mkFacePrompt(m){
-  const a=ma(m);
-  const ey=(a.ey||'brown').toLowerCase().replace(/_eyes/,'').replace(/_/,' ');
-  const gw=m.g==='W'?'woman':'man';
-  const age=m.ag||(m.g==='W'?'20-30':'25-35');
-  const hair=a.hr||'natural';
-  return `Generate a close-up portrait of the same model from this full-body reference image. Do NOT copy a real person.\n\nMODEL: "${m.nm}" — ${gw}, age ${age}, ${cap(a.sk)} skin tone, ${a.eth} ethnicity, ${hair} hair, ${ey} eyes.\n\nMATCH EXACTLY from the reference body image:\n• Face structure, bone structure, and facial proportions\n• Exact skin tone and undertone\n• Hair color, texture, length, and style\n• Ethnicity and age\n• Body type context (${m.sz}, ${a.bd} build)\n\nPOSE [Close-Up]: Head and shoulders portrait. Face filling ~60% of frame. Neutral expression with slight natural smile. Eyes looking directly at camera.\n\nSTUDIO: Seamless pure white background. Soft even beauty lighting with subtle fill light. 85mm lens, shallow depth of field, eyes tack-sharp.\n\nWARDROBE: ${m.g==='W'?'Black ribbed tank top with wide straps visible at shoulders':'Fitted white or black crew-neck tee visible at shoulders'}. No accessories, jewelry, or props.\n\nCRITICAL: Natural skin texture with visible pores and micro-imperfections — NOT airbrushed. Natural casting portrait style, NOT editorial. Must be recognizably the same person as the body reference.`;
+  // Client-specific additions based on feedback categories
+  const clientAdds=[];
+  // Face structure
+  if(m._improv_face&&!/approved|no comment/i.test(m._improv_face)){
+    clientAdds.push('Client face notes: '+m._improv_face);
+  }
+  // Rendering/skin specific
+  if(m._improv_render&&!/approved|no comment/i.test(m._improv_render)){
+    clientAdds.push('Client skin/rendering notes: '+m._improv_render);
+  }
+  
+  let p=`EDIT THE PROVIDED FULL-BODY IMAGE.
+
+Task: Create a photorealistic casting headshot derived from this same person in the provided full-body image. Keep the exact identity from the source image (same face, same hairline, same eye shape, same skin tone). Do NOT transform the person into a different individual. Do NOT copy any real person — inspired-by type only.
+
+Crop / framing:
+- Tight head-and-shoulders crop (passport/casting style), centered and symmetrical.
+- Include the top of the shoulders and collarbone area, shoulders visible.
+- Keep head upright, eye-level camera perspective. No wide-angle distortion.
+
+Background / studio:
+- Seamless pure white studio background (clean white), soft even lighting, minimal shadows.
+- Neutral color science.
+
+Realism:
+- High sharpness, realistic skin texture with visible pores and micro-imperfections.
+- Slight natural digital grain, natural skin variation.
+- No beauty filter, no heavy retouching, no plastic/airbrushed skin.
+
+Expression:
+- Neutral casting expression, relaxed jaw, eyes looking at camera.
+
+Hair:
+- Keep the same hair color and hairstyle from the source image.
+- Ensure hair does not cover the eyes or important facial features.
+
+Wardrobe:
+- Preserve the same outfit from the source image, but only visible as a black ribbed tank top with wide straps.
+- No logos, no patterns, no jewelry, no accessories.
+
+Negative:
+- new person, face swap, different identity, celebrity, exact lookalike, editorial/glam makeup, over-smoothing, CGI, illustration, blur, low-res, watermark, text, logo, lens distortion.`;
+  
+  if(clientAdds.length){
+    p+=`\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCLIENT-SPECIFIC CORRECTIONS (${m.nm}):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`+clientAdds.map(a=>'• '+a).join('\n');
+    p+=`\n\nApply these corrections while preserving the exact identity. These are refinements to the existing face, NOT identity changes.`;
+  }
+  return p;
 }
 
 function getFixes(m){
@@ -3297,117 +3373,224 @@ function getFixes(m){
   try{return typeof m._fixes==='string'?JSON.parse(m._fixes):m._fixes;}catch(e){return [];}
 }
 
+// ══════════════════════════════════════════════
+// BODY PROMPT — extend from headshot profile image
+// Uses user-specified template + appends client feedback
+// ══════════════════════════════════════════════
 function mkFixPrompt(m){
+  // Build client-specific additions grouped by category
+  const bodyNotes=[]; // proportions
+  const skinNotes=[]; // rendering/realism
+  
+  if(m._improv_prop&&!/approved|no comment/i.test(m._improv_prop))bodyNotes.push(m._improv_prop);
+  if(m._improv_render&&!/approved|no comment/i.test(m._improv_render))skinNotes.push(m._improv_render);
+  
+  // Also use structured fixes for specific action items
   const fixes=getFixes(m);
-  if(!fixes.length)return '';
-  const a=ma(m);const wt=mwt(m);
-  const big=['XL','XXL','3XL','4XL'].includes(m.sz);
-  const bq=a.bd==='broad'&&big?'plus-size/heavy build':a.bd==='broad'?'broad/stocky build':a.bd==='athletic'?'athletic/fit build':a.bd==='lean'?'lean/slim build':a.bd==='regular'&&big?(m.g==='W'?'curvy':'large/heavy build'):'regular build';
-  const hs=m.g==='W'?m.h+'cm':(Math.floor(m.h/12)+"'"+Math.round(m.h%12)+'" ('+Math.round(m.h*2.54)+'cm)');
-  const ms=m.g==='W'?`B${m.bu}/W${m.wa}/H${m.hp}cm${m.ins?`, inseam ${m.ins}cm`:''}`:`B${(m.bu*2.54).toFixed(1)}/W${(m.wa*2.54).toFixed(1)}/H${(m.hp*2.54).toFixed(1)}cm`;
-  const gw=m.g==='W'?'woman':'man';
-  const ey=(a.ey||'brown').toLowerCase();
-
-  // KEEP section
-  const keep=[];
-  if(m._dist)keep.push(`Body proportion distribution: ${m._dist}`);
-  if(m._fit_driver)keep.push(`Primary fit driver: ${m._fit_driver}`);
-  if(m._upper_scale)keep.push(`Upper body scale: ${m._upper_scale}`);
-
-  // FIXES section - group by category
-  const grouped={};
-  fixes.forEach(f=>{
-    const k=f.category||'General';
-    if(!grouped[k])grouped[k]=[];
-    grouped[k].push(`${f.issue} → ${f.action}`);
-  });
-
-  let prompt=`REVISION PROMPT — Round 2 Fixes\n\nGOAL: Regenerate the same model with specific corrections based on client feedback. Do NOT copy a real person. Keep the core identity and attributes intact while applying the listed fixes.\n\nMODEL: "${m.nm}" — ${cap(a.st)}, ${bq}, size ${m.sz}, ${hs}, ~${wt}kg. ${cap(a.sk)} skin, ${a.eth} ethnicity, ${m.g==='W'?'female':'male'}, ${ey} eyes. ${ms}.\n\n`;
+  const actions=fixes.map(f=>`[${f.category}] ${f.action}`);
   
-  if(keep.length){
-    prompt+=`KEEP (do not change these characteristics):\n`;
-    keep.forEach(k=>prompt+=`• ${k}\n`);
-    prompt+='\n';
+  let p=`EDIT / EXTEND FROM THE PROVIDED PROFILE IMAGE (HEADSHOT).
+
+Goal: Generate a full-body casting image of the same exact AI fashion model shown in the provided profile image. The face identity must match perfectly, and the entire body must have the same skin tone, undertone, and realism as the face. Do NOT change identity. Do NOT copy any real person — inspired-by type only.
+
+Identity + color match (critical):
+- Use the provided headshot as the identity reference.
+- Match skin tone exactly from face to body: same undertone (warm/cool/neutral), same brightness, same saturation.
+- Avoid "face-body mismatch" (no different tan levels, no different undertones on arms/legs/torso).
+- Keep realistic gradients: subtle natural variation between face/neck/shoulders/arms, but consistent overall.
+
+Full-body framing:
+- Full body from head to toes, centered, neutral stance.
+- Neutral perspective, no wide-angle distortion, no stretched limbs.
+
+Studio setup:
+- Seamless pure white background.
+- Soft even lighting, minimal shadows.
+- Only a very subtle grounding shadow under the feet.
+- Neutral color science, high sharpness.
+
+Realism (body):
+- Realistic skin texture on arms/legs/torso: visible pores, micro texture, natural sheen.
+- No airbrushed/plastic body skin. No smoothing filters.
+- Natural anatomical details: knees, elbows, collarbones, hands, fingers, feet look real and proportional.
+
+Wardrobe (uniform):
+- Black ribbed tank top with wide straps, no logos/patterns.
+- ${m.g==='M'?'Standard black shorts':'Black fitted biker shorts'}, no logos.
+- Minimal low-top white sneakers, no visible branding.
+- No jewelry, no accessories, no props.
+
+Hair:
+- Keep the same hair color and style as the headshot (tidy, consistent), no hair covering the face.
+
+Pose:
+- Front view, relaxed casting stance, arms relaxed down, shoulders level, head straight, eyes forward, neutral expression.
+
+Target measurements:
+- Height: ${m.h}cm · Bust: ${m.bu}cm · Waist: ${m.wa}cm · Hips: ${m.hp}cm${m.ins?' · Inseam: '+m.ins+'cm':''}
+- Build: ${m.bd}, size ${m.sz}, ${m.st} stature
+
+Negative:
+- different person, face swap, identity drift, mismatched skin tone, different undertone, overly smooth skin, CGI, illustration, editorial styling, heavy makeup, glam, logos, text, watermark, blur, wide-angle distortion, warped anatomy, extra limbs/fingers.`;
+
+  if(bodyNotes.length||skinNotes.length||actions.length){
+    p+=`\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCLIENT-SPECIFIC CORRECTIONS (${m.nm}):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    if(bodyNotes.length){
+      p+=`\n\nBody/proportions fixes:\n`+bodyNotes.map(n=>'• '+n).join('\n');
+    }
+    if(skinNotes.length){
+      p+=`\n\nSkin/rendering fixes:\n`+skinNotes.map(n=>'• '+n).join('\n');
+    }
+    if(actions.length){
+      p+=`\n\nRequired actions:\n`+actions.map(a=>'• '+a).join('\n');
+    }
+    p+=`\n\nApply these corrections while preserving the exact identity from the headshot reference.`;
   }
-  
-  prompt+=`FIXES (apply these corrections):\n`;
-  Object.entries(grouped).forEach(([cat,items])=>{
-    prompt+=`[${cat}]\n`;
-    items.forEach(i=>prompt+=`  • ${i}\n`);
-  });
-  
-  prompt+=`\nSTUDIO: Seamless pure white background. Soft even lighting, minimal shadows. Full body or close-up per intent. High sharpness, realistic casting photography.\n\nCONSISTENCY: Same face identity as original batch. Natural skin texture with visible pores and micro-imperfections — NOT airbrushed. NOT editorial. Consistent skin tone and texture across Front / 45L / 45R / Profile 90 / Back / Close-Up.`;
-  return prompt;
+  return p;
+}
+
+// Tag definitions
+const FX_TAGS={
+  LEG:{color:'#3b82f6',label:'LEG',models:[2001,2002,2003,2004,2005,2006,2008,2009,2010,2011,2012,2013,2014,2015,2016,2018,2019]},
+  SKIN:{color:'#10b981',label:'SKIN',models:[2001,2002,2003,2004,2005,2008,2009,2010,2012,2013,2014,2015,2016,2017,2018]},
+  COLOR:{color:'#f97316',label:'COLOR',models:[2001,2002,2011,2012,2017,2019]},
+  BROW:{color:'#eab308',label:'BROW',models:[2002,2003,2004,2008,2010,2013,2016,2017,2018,2020]},
+  FACE:{color:'#ef4444',label:'FACE',models:[2001,2005,2011,2012,2014,2015,2016,2017,2019]}
+};
+const FX_STAGES=['tofix','prompt','generated','qc','ready'];
+const FX_STAGE_KEY='dp_fx_stages';
+function loadFxStages(){try{return JSON.parse(localStorage.getItem(FX_STAGE_KEY))||{};}catch(e){return {};}}
+function saveFxStage(mid,stage){try{const s=loadFxStages();s[mid]=stage;localStorage.setItem(FX_STAGE_KEY,JSON.stringify(s));}catch(e){}}
+
+function getModelTags(mid){
+  return Object.entries(FX_TAGS).filter(([k,v])=>v.models.includes(mid)).map(([k,v])=>({key:k,...v}));
 }
 
 function renderFixes(){
-  const grid=mw('fxGrid');if(!grid)return;
-  const filter=mw('fxFilter')?.value||'';
-  const models=MD.filter(m=>m._fixes);
-  const filtered=filter?models.filter(m=>m._rev_status===filter):models;
+  const tagFilter=mw('fxTagFilter')?.value||'';
+  const models=MD.filter(m=>m._fixes||m._improv_prop);
+  const stages=loadFxStages();
   
-  if(!filtered.length){
-    grid.innerHTML='<div style="text-align:center;padding:48px;color:var(--tx3);grid-column:1/-1">אין דוגמניות תואמות</div>';
-    return;
+  // Render global tags library
+  const gTags=mw('fxGlobalTags');
+  if(gTags){
+    gTags.innerHTML=Object.entries(FX_TAGS).map(([k,v])=>`<div style="display:flex;align-items:center;gap:5px;padding:5px 8px;background:${v.color}15;border:1px solid ${v.color}40;border-radius:6px">
+      <span class="fx-tag" style="background:${v.color}">${v.label}</span>
+      <span style="font-size:9px;color:var(--tx2)">${v.models.length} models</span>
+    </div>`).join('');
   }
   
-  grid.innerHTML=filtered.map(m=>{
-    const fixes=getFixes(m);
-    const status=m._rev_status||'';
-    const brand=m._brand||'';
-    const statusCol=status==='Approved'?'var(--gn)':status==='Reject'?'var(--rs)':'var(--am)';
-    const statusBg=status==='Approved'?'rgba(16,185,129,.1)':status==='Reject'?'rgba(239,68,68,.1)':'rgba(245,158,11,.1)';
-    const heroFront=dbIm[m.id+'_Front']||'';
-    const heroCloseup=dbIm[m.id+'_Close-Up']||'';
-    const fixPrompt=mkFixPrompt(m);
-    const facePrompt=mkFacePrompt(m);
+  // Place models in columns
+  FX_STAGES.forEach(stage=>{
+    const col=mw('fxCol_'+stage);if(!col)return;
+    let list=models.filter(m=>{
+      const s=stages[m.id]||'tofix';
+      if(m._rev_status==='Approved'&&!stages[m.id])return stage==='ready'; // Approved → ready
+      return s===stage;
+    });
     
-    return `<div style="background:var(--sf);border:2px solid ${m.cl}40;border-radius:12px;overflow:hidden">
-      <div style="background:linear-gradient(90deg,${m.cl}20,transparent);padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bd)">
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <div style="width:42px;height:54px;border-radius:6px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center" title="Front">
-            ${heroFront?`<img src="${heroFront}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:18px;opacity:.2">👤</div>`}
+    // Apply tag filter
+    if(tagFilter){
+      const tagDef=FX_TAGS[tagFilter];
+      if(tagDef)list=list.filter(m=>tagDef.models.includes(m.id));
+    }
+    
+    col.innerHTML=`<div style="font-size:9px;color:var(--tx3);text-align:center;padding:2px">${list.length} models</div>`+
+    list.map(m=>{
+      const tags=getModelTags(m.id);
+      const closeup=dbIm[m.id+'_Close-Up']||'';
+      const front=dbIm[m.id+'_Front']||'';
+      const fixes=getFixes(m);
+      const brand=m._brand||'';
+      const num=String(m.id-2000).padStart(2,'0');
+      const curStage=stages[m.id]||(m._rev_status==='Approved'?'ready':'tofix');
+      const stageIdx=FX_STAGES.indexOf(curStage);
+      const canLeft=stageIdx>0;
+      const canRight=stageIdx<FX_STAGES.length-1;
+      const isApproved=m._rev_status==='Approved';
+      
+      // Client notes - condensed
+      let clientNotes=[];
+      if(m._improv_prop&&!/approved|no comment/i.test(m._improv_prop))clientNotes.push(m._improv_prop);
+      if(m._improv_face&&!/approved|no comment/i.test(m._improv_face))clientNotes.push(m._improv_face);
+      if(m._improv_render&&!/approved|no comment/i.test(m._improv_render))clientNotes.push(m._improv_render);
+      
+      // Fix actions (from structured fixes)
+      const fixActions=fixes.map(f=>`${f.action}`);
+
+      return `<div class="fx-card" style="border-left:3px solid ${m.cl}">
+        <!-- Header: number + name + thumbnails -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <div style="width:36px;height:44px;border-radius:5px;overflow:hidden;background:var(--sf2);flex-shrink:0">
+            ${closeup?`<img src="${closeup}" style="width:100%;height:100%;object-fit:cover"/>`:
+              front?`<img src="${front}" style="width:100%;height:100%;object-fit:cover;filter:brightness(.95)"/>`
+              :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:.2">👤</div>`}
           </div>
-          <div style="width:42px;height:54px;border-radius:6px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;border:1px solid var(--ac);position:relative" title="Close-Up">
-            ${heroCloseup?`<img src="${heroCloseup}" style="width:100%;height:100%;object-fit:cover"/>`:`<div style="font-size:9px;text-align:center;color:var(--ac);line-height:1.1;padding:2px">📸<br>אין<br>CU</div>`}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:${m.cl}">${num} ${m.nm}</div>
+            <div style="font-size:9px;color:var(--tx3)">${esc(brand)} · ${m.sz} · ${m.h}cm</div>
           </div>
         </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:${m.cl}">${m.nm} <span style="color:var(--tx3);font-size:10px;font-weight:500">#${m.id}</span></div>
-          <div style="font-size:10px;color:var(--tx2)">${esc(brand)} · ${m.sz} · ${m.g==='W'?'♀':'♂'}</div>
+        <!-- Tags -->
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px">
+          ${isApproved?'<span class="fx-tag" style="background:var(--gn)">APPROVED</span>':
+            tags.map(t=>`<span class="fx-tag" style="background:${t.color}">${t.key}</span>`).join('')}
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
-          <span style="padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;color:${statusCol};background:${statusBg};border:1px solid ${statusCol}40">${esc(status)}</span>
-          <span style="font-size:9px;color:var(--tx3)">${fixes.length} issues</span>
+        ${!isApproved?`
+        <!-- Mini pose grid -->
+        <div style="display:flex;gap:2px;margin-bottom:5px">
+          ${POSES.filter(p=>p!=='Close-Up').map(p=>{const u=dbIm[m.id+'_'+p];return `<div style="width:24px;height:30px;border-radius:3px;overflow:hidden;background:var(--sf2);font-size:6px;display:flex;align-items:center;justify-content:center;color:var(--tx3)">${u?`<img src="${u}" style="width:100%;height:100%;object-fit:cover"/>`:(p[0])}</div>`;}).join('')}
         </div>
-      </div>
-      <div style="padding:10px">
-        <div style="font-size:9px;font-weight:700;color:var(--tx2);text-transform:uppercase;margin-bottom:5px">📋 Issues</div>
-        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
-          ${fixes.map(f=>`<div style="display:flex;gap:6px;padding:5px 7px;background:var(--sf2);border-radius:5px;border-right:3px solid var(--am)">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:9px;font-weight:700;color:var(--am);text-transform:uppercase;margin-bottom:1px">${esc(f.category)}</div>
-              <div style="font-size:10px;color:var(--tx);line-height:1.3">${esc(f.issue)}</div>
-              <div style="font-size:9px;color:var(--tx3);margin-top:2px">→ <span style="color:var(--gn)">${esc(f.action)}</span></div>
-            </div>
-          </div>`).join('')}
+        <!-- Client Notes -->
+        <div style="font-size:9px;color:var(--tx3);line-height:1.4;margin-bottom:5px;border-top:1px solid var(--bd);padding-top:4px">
+          ${clientNotes.length?clientNotes.map(n=>`<div style="margin-bottom:2px">- ${esc(n.substring(0,80))}${n.length>80?'...':''}</div>`).join(''):'<div style="color:var(--gn)">✅ Approved</div>'}
         </div>
-        <details style="margin-bottom:5px">
-          <summary style="font-size:10px;font-weight:700;color:var(--ac);cursor:pointer;padding:5px 0">📝 Fix Prompt (Ready to copy)</summary>
-          <textarea readonly class="pbox" style="width:100%;min-height:150px;resize:vertical;font-size:9px;font-family:'JetBrains Mono',monospace;line-height:1.4;margin-top:5px">${esc(fixPrompt)}</textarea>
-        </details>
-        ${!heroCloseup?`<details style="margin-bottom:8px">
-          <summary style="font-size:10px;font-weight:700;color:var(--pk);cursor:pointer;padding:5px 0">📸 Generate Close-Up Prompt (face from body)</summary>
-          <textarea readonly class="pbox" style="width:100%;min-height:120px;resize:vertical;font-size:9px;font-family:'JetBrains Mono',monospace;line-height:1.4;margin-top:5px">${esc(facePrompt)}</textarea>
-          <button class="btn btn-p" style="font-size:10px;padding:5px 10px;margin-top:5px;width:100%" onclick='navigator.clipboard.writeText(${JSON.stringify(facePrompt)}).then(()=>toast("📸 פרומפט פנים הועתק!"))'>📋 Copy Face Prompt</button>
-        </details>`:''}
-        <div style="display:flex;gap:5px">
-          <button class="btn btn-p" style="flex:1;font-size:10px;padding:6px" onclick='navigator.clipboard.writeText(${JSON.stringify(fixPrompt)}).then(()=>toast("📋 הועתק!"))'>📋 Copy Prompt</button>
-          <button class="btn btn-g" style="font-size:10px;padding:6px 10px" onclick="fxOpenQC(${m.id})">🔬 QC</button>
+        <!-- Fix Block -->
+        ${fixActions.length?`<div style="border-top:1px solid var(--bd);padding-top:4px;margin-bottom:5px">
+          <div style="font-size:8px;font-weight:700;color:var(--ac);text-transform:uppercase;margin-bottom:3px">Fix:</div>
+          ${fixActions.slice(0,4).map(a=>`<div style="font-size:9px;color:var(--gn);line-height:1.3;margin-bottom:1px">→ ${esc(a)}</div>`).join('')}
+        </div>`:''}
+        `:''}
+        <!-- Actions -->
+        <div style="display:flex;gap:3px;margin-top:4px;border-top:1px solid var(--bd);padding-top:4px">
+          ${canLeft?`<button class="btn btn-g" style="font-size:9px;padding:2px 6px" onclick="fxMove(${m.id},-1)" title="שלב קודם">◀</button>`:''}
+          ${!isApproved?`<button class="btn btn-g" style="flex:1;font-size:9px;padding:2px 4px" onclick="fxCopyPrompt(${m.id})" title="העתק prompt">📋</button>`:''}
+          <button class="btn btn-g" style="font-size:9px;padding:2px 6px" onclick="fxOpenQC(${m.id})" title="QC">🔬</button>
+          ${canRight?`<button class="btn btn-p" style="font-size:9px;padding:2px 6px" onclick="fxMove(${m.id},1)" title="שלב הבא">▶</button>`:''}
         </div>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    }).join('');
+  });
+  
+  // Render progress
+  const prog=mw('fxProgress');
+  if(prog){
+    const counts={};
+    FX_STAGES.forEach(s=>counts[s]=0);
+    models.forEach(m=>{
+      const s=stages[m.id]||(m._rev_status==='Approved'?'ready':'tofix');
+      counts[s]=(counts[s]||0)+1;
+    });
+    const total=models.length;
+    const done=counts.ready||0;
+    prog.innerHTML=`<div style="margin-bottom:4px">Total: ${total} · Done: ${done}</div>
+    <div style="height:6px;background:var(--sf2);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--gn);width:${Math.round(done/total*100)}%;border-radius:3px;transition:width .3s"></div></div>
+    <div style="font-size:9px;margin-top:3px">${FX_STAGES.map((s,i)=>`<span style="color:${['#ef4444','#f59e0b','#8b5cf6','#06b6d4','#10b981'][i]}">${s}: ${counts[s]||0}</span>`).join(' · ')}</div>`;
+  }
+}
+
+function fxMove(mid,dir){
+  const stages=loadFxStages();
+  const cur=stages[mid]||'tofix';
+  const idx=FX_STAGES.indexOf(cur);
+  const next=FX_STAGES[idx+dir];
+  if(next){saveFxStage(mid,next);renderFixes();}
+}
+
+function fxCopyPrompt(mid){
+  const m=MD.find(x=>x.id===mid);if(!m)return;
+  const p=mkFixPrompt(m);
+  navigator.clipboard.writeText(p).then(()=>toast('📋 Prompt copied: '+m.nm));
 }
 
 function fxOpenQC(mid){
@@ -3882,7 +4065,80 @@ async function boot(){
   if(connected)subRealtime();
 }
 
-boot();
+// ══════════════════════════════════════════════
+// LOGIN GATE — dashboard-wide password
+// ══════════════════════════════════════════════
+const DASHBOARD_PWD='dataplus2026'; // שנה לסיסמה שלך
+const DASHBOARD_AUTH_KEY='dp_dash_auth';
+
+function showLoginGate(){
+  // Full-screen login overlay
+  const div=document.createElement('div');
+  div.id='loginGate';
+  div.style.cssText='position:fixed;inset:0;background:#0a0a12;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Outfit,sans-serif';
+  div.innerHTML=`
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:64px;margin-bottom:12px">🔐</div>
+      <div style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">DataPlus Dashboard</div>
+      <div style="font-size:13px;color:#888;margin-top:6px">הכניסי סיסמה לגישה</div>
+    </div>
+    <div style="background:#151520;border:1px solid #2a2a38;border-radius:14px;padding:28px;width:340px;max-width:92vw">
+      <input id="dashPwdInput" type="password" placeholder="סיסמה..." autofocus
+        style="width:100%;background:#0a0a12;border:1px solid #2a2a38;color:#fff;padding:12px 16px;border-radius:8px;font-size:15px;text-align:center;letter-spacing:4px;margin-bottom:10px;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')checkDashboardPwd()"/>
+      <div id="dashPwdErr" style="color:#ef4444;font-size:11px;height:16px;margin-bottom:10px;text-align:center"></div>
+      <button onclick="checkDashboardPwd()" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#ec4899);border:none;color:#fff;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px">כניסה</button>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:12px;color:#888;font-size:11px;cursor:pointer;justify-content:center">
+        <input type="checkbox" id="dashRemember" checked style="accent-color:#8b5cf6"/>
+        שמרי אותי מחוברת במכשיר זה
+      </label>
+    </div>
+    <div style="margin-top:20px;color:#555;font-size:10px">© DataPlus AI · FY26</div>
+  `;
+  document.body.appendChild(div);
+  setTimeout(()=>document.getElementById('dashPwdInput')?.focus(),80);
+}
+
+function checkDashboardPwd(){
+  const inp=document.getElementById('dashPwdInput');
+  const err=document.getElementById('dashPwdErr');
+  const remember=document.getElementById('dashRemember')?.checked;
+  if(!inp)return;
+  if(inp.value===DASHBOARD_PWD){
+    if(remember){
+      try{localStorage.setItem(DASHBOARD_AUTH_KEY,'1');}catch(e){}
+    }else{
+      try{sessionStorage.setItem(DASHBOARD_AUTH_KEY,'1');}catch(e){}
+    }
+    document.getElementById('loginGate')?.remove();
+    boot();
+  }else{
+    if(err){err.textContent='\u274C \u05E1\u05D9\u05E1\u05DE\u05D4 \u05E9\u05D2\u05D5\u05D9\u05D4';setTimeout(()=>{if(err)err.textContent='';},2000);}
+    inp.value='';inp.focus();
+    inp.style.animation='shake 0.4s';
+    setTimeout(()=>{inp.style.animation='';},400);
+  }
+}
+
+function dashboardLogout(){
+  try{localStorage.removeItem(DASHBOARD_AUTH_KEY);sessionStorage.removeItem(DASHBOARD_AUTH_KEY);}catch(e){}
+  location.reload();
+}
+
+// Check auth on page load
+function initDashboardAuth(){
+  let ok=false;
+  try{
+    ok=localStorage.getItem(DASHBOARD_AUTH_KEY)==='1' || sessionStorage.getItem(DASHBOARD_AUTH_KEY)==='1';
+  }catch(e){}
+  if(ok){
+    boot();
+  }else{
+    showLoginGate();
+  }
+}
+
+initDashboardAuth();
 </script>
 </body>
 </html>
