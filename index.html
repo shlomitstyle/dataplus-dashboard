@@ -1951,6 +1951,229 @@ function openModel(mid){
 function closeModal(){mw('modal').innerHTML='';}
 
 // ══════════════════════════════════════════════
+// VERSION COMPARISON — before/after slider
+// ══════════════════════════════════════════════
+async function upImgV2(mid,pose,file){
+  // Upload v2 (new version) to Supabase with _v2 suffix in path
+  const key=mid+'_'+pose+'_v2';
+  if(sb){
+    try{
+      await ensureModelStatus(mid);
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+      const path=`${mid}/${pose.replace(/ /g,'_')}_v2.${ext}`;
+      try{await sb.storage.from(BUCKET).remove([path]);}catch(_){}
+      const{error:upErr}=await sb.storage.from(BUCKET).upload(path,file,{cacheControl:'3600',contentType:file.type,upsert:true});
+      if(upErr){toast('❌ '+upErr.message);return null;}
+      const{data:u}=sb.storage.from(BUCKET).getPublicUrl(path);
+      dbIm[key]=u.publicUrl;
+      // Save as separate row with pose suffix so realtime works
+      try{await sb.from('model_images').upsert({model_id:mid,pose:pose+'_v2',image_url:u.publicUrl,uploaded_by:curUser||'unknown'},{onConflict:'model_id,pose'});}catch(e){}
+      return u.publicUrl;
+    }catch(e){toast('שגיאה: '+e.message);return null;}
+  }
+  // Fallback: local blob
+  const url=URL.createObjectURL(file);
+  dbIm[key]=url;
+  return url;
+}
+
+function openCompare(mid,defaultPose){
+  const m=MD.find(x=>x.id===mid);if(!m)return;
+  const poses=['Front','45L','45R','Profile 90','Back','Close-Up'];
+  const pose=defaultPose||'Front';
+  
+  const renderModal=(curPose)=>{
+    const urlOld=dbIm[mid+'_'+curPose]||'';
+    const urlNew=dbIm[mid+'_'+curPose+'_v2']||'';
+    
+    mw('modal').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box" style="width:min(1100px,95vw);max-height:94vh;overflow-y:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <h4 style="margin:0">🔀 השוואה: ${esc(m.nm)} #${m.id}</h4>
+            <div style="font-size:11px;color:var(--tx2)">Original vs New version</div>
+          </div>
+          <button class="btn btn-g" onclick="closeModal()" style="font-size:12px">✕</button>
+        </div>
+        
+        <!-- Pose selector -->
+        <div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap">
+          ${poses.map(p=>{
+            const has=dbIm[mid+'_'+p]||dbIm[mid+'_'+p+'_v2'];
+            return `<button class="btn ${p===curPose?'btn-p':'btn-g'}" style="font-size:10px;padding:4px 10px;${has?'':'opacity:.4'}" onclick="cmpSwitch(${mid},'${p}')">${p}${has?'':' (ריק)'}</button>`;
+          }).join('')}
+        </div>
+        
+        <!-- View mode tabs -->
+        <div style="display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--bd)">
+          <button id="cmpTabSide" class="btn btn-p" style="font-size:10px;padding:5px 12px;border-radius:7px 7px 0 0" onclick="cmpShowMode('side')">🔀 זה לצד זה</button>
+          <button id="cmpTabSlider" class="btn btn-g" style="font-size:10px;padding:5px 12px;border-radius:7px 7px 0 0" onclick="cmpShowMode('slider')">🎚️ Slider</button>
+          <button id="cmpTabOverlay" class="btn btn-g" style="font-size:10px;padding:5px 12px;border-radius:7px 7px 0 0" onclick="cmpShowMode('overlay')">👁️ שקיפות</button>
+        </div>
+        
+        <!-- Side-by-side view -->
+        <div id="cmpSideView">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:700;color:var(--rs)">📸 גרסה ישנה (Original)</span>
+                <span style="font-size:9px;color:var(--tx3)">v1</span>
+              </div>
+              <div style="background:var(--sf2);border:2px solid var(--rs);border-radius:8px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;position:relative">
+                ${urlOld?`<img src="${urlOld}" style="width:100%;height:100%;object-fit:contain"/>`:`<div style="color:var(--tx3);font-size:12px;text-align:center;padding:20px">אין תמונה ישנה<br><span style="font-size:9px">העלי דרך טאב גלריה</span></div>`}
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:700;color:var(--gn)">✨ גרסה חדשה (Fixed)</span>
+                <label class="btn btn-p" style="font-size:9px;padding:3px 8px;cursor:pointer">
+                  📤 העלי
+                  <input type="file" accept="image/*" style="display:none" onchange="cmpUpload(${mid},'${curPose}',event)"/>
+                </label>
+              </div>
+              <div style="background:var(--sf2);border:2px solid var(--gn);border-radius:8px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;position:relative">
+                ${urlNew?`<img src="${urlNew}" style="width:100%;height:100%;object-fit:contain"/>
+                  <button onclick="cmpDeleteV2(${mid},'${curPose}')" style="position:absolute;top:6px;left:6px;background:rgba(239,68,68,.9);color:#fff;border:none;border-radius:4px;padding:3px 7px;font-size:9px;cursor:pointer">🗑️</button>`
+                  :`<div style="color:var(--tx3);font-size:12px;text-align:center;padding:20px">אין גרסה חדשה<br><span style="font-size:9px">לחצי "העלי" למעלה</span></div>`}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Slider view (drag divider) -->
+        <div id="cmpSliderView" style="display:none">
+          ${urlOld&&urlNew?`
+            <div style="font-size:10px;color:var(--tx3);margin-bottom:6px;text-align:center">גרור את הקו כדי להשוות</div>
+            <div id="cmpSliderBox" style="position:relative;aspect-ratio:3/4;max-height:75vh;margin:0 auto;background:var(--sf2);border-radius:10px;overflow:hidden;cursor:ew-resize;user-select:none">
+              <img src="${urlNew}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain"/>
+              <div id="cmpSliderClip" style="position:absolute;top:0;left:0;width:50%;height:100%;overflow:hidden">
+                <img src="${urlOld}" style="position:absolute;top:0;left:0;width:100vw;max-width:none;height:100%;object-fit:contain" id="cmpSliderImgOld"/>
+              </div>
+              <div id="cmpSliderLine" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:3px;height:100%;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.5);pointer-events:none">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.3)">⇔</div>
+              </div>
+              <div style="position:absolute;top:10px;left:10px;background:rgba(239,68,68,.9);color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700">OLD</div>
+              <div style="position:absolute;top:10px;right:10px;background:rgba(16,185,129,.9);color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700">NEW</div>
+            </div>
+          `:`<div style="text-align:center;padding:40px;color:var(--tx3)">⚠️ צריך גם גרסה ישנה וגם חדשה כדי להשתמש ב-slider</div>`}
+        </div>
+        
+        <!-- Overlay view -->
+        <div id="cmpOverlayView" style="display:none">
+          ${urlOld&&urlNew?`
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;justify-content:center">
+              <span style="font-size:10px;color:var(--rs)">OLD</span>
+              <input type="range" id="cmpOpacity" min="0" max="100" value="50" style="width:200px" oninput="document.getElementById('cmpOverlayImg').style.opacity=(this.value/100);document.getElementById('cmpOpLbl').textContent=this.value+'%'"/>
+              <span style="font-size:10px;color:var(--gn)">NEW</span>
+              <span id="cmpOpLbl" style="font-size:10px;color:var(--tx2);font-family:monospace;width:40px">50%</span>
+            </div>
+            <div style="position:relative;aspect-ratio:3/4;max-height:75vh;margin:0 auto;background:var(--sf2);border-radius:10px;overflow:hidden">
+              <img src="${urlOld}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain"/>
+              <img id="cmpOverlayImg" src="${urlNew}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;opacity:0.5"/>
+            </div>
+          `:`<div style="text-align:center;padding:40px;color:var(--tx3)">⚠️ צריך גם גרסה ישנה וגם חדשה</div>`}
+        </div>
+        
+        <!-- Quick actions -->
+        <div style="display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)">
+          ${urlNew?`<button class="btn btn-p" style="font-size:10px" onclick="cmpApproveV2(${mid},'${curPose}')">✅ אשר כגרסה סופית</button>`:''}
+          <button class="btn btn-g" style="font-size:10px" onclick="fxOpenQC(${mid});closeModal()">🔬 לעמוד QC</button>
+          <button class="btn btn-g" style="font-size:10px;margin-right:auto" onclick="closeModal()">סגירה</button>
+        </div>
+      </div>
+    </div>`;
+    
+    // Init slider drag after render
+    setTimeout(initCmpSlider,50);
+  };
+  
+  window._cmpCurrent={mid,pose,render:renderModal};
+  renderModal(pose);
+}
+
+function cmpSwitch(mid,pose){
+  if(window._cmpCurrent){window._cmpCurrent.pose=pose;window._cmpCurrent.render(pose);}
+}
+
+function cmpShowMode(mode){
+  ['Side','Slider','Overlay'].forEach(m=>{
+    const view=mw('cmp'+m+'View');if(view)view.style.display=(m.toLowerCase()===mode)?'':'none';
+    const tab=mw('cmpTab'+m);if(tab){tab.classList.remove('btn-p');tab.classList.add('btn-g');}
+  });
+  const activeTab=mw('cmpTab'+mode.charAt(0).toUpperCase()+mode.slice(1));
+  if(activeTab){activeTab.classList.remove('btn-g');activeTab.classList.add('btn-p');}
+  if(mode==='slider')setTimeout(initCmpSlider,50);
+}
+
+function initCmpSlider(){
+  const box=mw('cmpSliderBox');if(!box||box._inited)return;box._inited=true;
+  const clip=mw('cmpSliderClip');
+  const line=mw('cmpSliderLine');
+  const oldImg=mw('cmpSliderImgOld');
+  let dragging=false;
+  const updatePos=(clientX)=>{
+    const r=box.getBoundingClientRect();
+    const pct=Math.max(0,Math.min(100,((clientX-r.left)/r.width)*100));
+    clip.style.width=pct+'%';
+    line.style.left=pct+'%';
+    // Make old image stay aligned with container
+    if(oldImg){oldImg.style.width=r.width+'px';oldImg.style.left='0px';}
+  };
+  box.addEventListener('mousedown',e=>{dragging=true;updatePos(e.clientX);e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(dragging)updatePos(e.clientX);});
+  document.addEventListener('mouseup',()=>{dragging=false;});
+  box.addEventListener('touchstart',e=>{dragging=true;updatePos(e.touches[0].clientX);});
+  box.addEventListener('touchmove',e=>{if(dragging){updatePos(e.touches[0].clientX);e.preventDefault();}},{passive:false});
+  box.addEventListener('touchend',()=>{dragging=false;});
+  // Init sizing
+  const r=box.getBoundingClientRect();
+  if(oldImg){oldImg.style.width=r.width+'px';}
+}
+
+async function cmpUpload(mid,pose,ev){
+  const f=ev.target.files[0];if(!f)return;
+  toast('⏳ מעלה...');
+  const url=await upImgV2(mid,pose,f);
+  if(url){
+    toast('✅ גרסה חדשה הועלתה');
+    if(window._cmpCurrent)window._cmpCurrent.render(window._cmpCurrent.pose);
+    renderFixes();
+  }
+}
+
+async function cmpDeleteV2(mid,pose){
+  if(!confirm('למחוק את הגרסה החדשה?'))return;
+  const key=mid+'_'+pose+'_v2';
+  if(sb){
+    try{
+      await sb.storage.from(BUCKET).remove([`${mid}/${pose.replace(/ /g,'_')}_v2.jpg`,`${mid}/${pose.replace(/ /g,'_')}_v2.png`,`${mid}/${pose.replace(/ /g,'_')}_v2.webp`]);
+      await sb.from('model_images').delete().match({model_id:mid,pose:pose+'_v2'});
+    }catch(e){}
+  }
+  delete dbIm[key];
+  if(window._cmpCurrent)window._cmpCurrent.render(window._cmpCurrent.pose);
+  renderFixes();
+  toast('🗑️ נמחק');
+}
+
+async function cmpApproveV2(mid,pose){
+  if(!confirm('הגרסה החדשה תחליף את הישנה ותהפוך לסופית. להמשיך?'))return;
+  const newUrl=dbIm[mid+'_'+pose+'_v2'];if(!newUrl)return;
+  // Copy v2 → v1 (make it the "current")
+  dbIm[mid+'_'+pose]=newUrl;
+  delete dbIm[mid+'_'+pose+'_v2'];
+  if(sb){
+    try{
+      await sb.from('model_images').upsert({model_id:mid,pose,image_url:newUrl,uploaded_by:curUser||'approved'},{onConflict:'model_id,pose'});
+      await sb.from('model_images').delete().match({model_id:mid,pose:pose+'_v2'});
+    }catch(e){}
+  }
+  closeModal();
+  renderFixes();renderGallery();
+  toast('✅ הגרסה החדשה אושרה כסופית');
+}
+
+// ══════════════════════════════════════════════
 // ADMIN PANEL
 // ══════════════════════════════════════════════
 const ADMIN_KEY='dp_admin_cfg';
@@ -3555,6 +3778,7 @@ function renderFixes(){
         <div style="display:flex;gap:3px;margin-top:4px;border-top:1px solid var(--bd);padding-top:4px">
           ${canLeft?`<button class="btn btn-g" style="font-size:9px;padding:2px 6px" onclick="fxMove(${m.id},-1)" title="שלב קודם">◀</button>`:''}
           ${!isApproved?`<button class="btn btn-g" style="flex:1;font-size:9px;padding:2px 4px" onclick="fxCopyPrompt(${m.id})" title="העתק prompt">📋</button>`:''}
+          <button class="btn btn-g" style="font-size:9px;padding:2px 6px" onclick="openCompare(${m.id})" title="השוואה Before/After">🔀</button>
           <button class="btn btn-g" style="font-size:9px;padding:2px 6px" onclick="fxOpenQC(${m.id})" title="QC">🔬</button>
           ${canRight?`<button class="btn btn-p" style="font-size:9px;padding:2px 6px" onclick="fxMove(${m.id},1)" title="שלב הבא">▶</button>`:''}
         </div>
